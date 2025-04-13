@@ -1,0 +1,41 @@
+*.DS_Store
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+venv/
+env/
+.venv/
+.env
+*/site-packages/
+
+# Django specific
+*.log
+*.pot
+media/
+static/
+local_settings.py
+db.sqlite3
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDEs and editors
+*.swp
+*~
+.vscode/
+.idea/
+
+# Packages
+*.egg-info
+dist/
+build/
+
+# Tests and coverage
+tests/coverage_html/
+tests/.coverage
+*/report/
+*/screenshots/

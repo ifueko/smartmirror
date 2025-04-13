@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FuekOS SmartMirror</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous">
+    {% load static %}
+    <link href="{% static 'mirror/css/dashboard.css' %}" rel="stylesheet">
+</head>
+<body class="d-flex flex-column min-vh-100 justify-bewteen">
+<div id="clock" class="clock text-center align-middle p-1">HH:MM:ss</div>
+<div class="top-bar container-fluid py-3 d-flex justify-between">
+    <div class="affirmations bg-secondary p-3 flex-grow-1 fw-light fst-italic text-warning">
+    <table>
+      <tbody>
+        <tr>
+          <td class="text-center align-middle"> 💖Affirmations go here💖 </td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="app-bar bg-secondary align-middle">
+        <table>
+          <tbody>
+            <tr>
+                <td id="player">🎶Spotify</td>
+                <td id="dock">📱App Dock</td>
+            </tr>
+          </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="container-fluid flex-grow-1 p-2">
+    <div class="row g-2">
+        <div class="col-md-6">
+            <div class="calendar bg-secondary bg-opacity-25 p-3 rounded mb-2">📆 Calendar</div>
+            <div class="daily-tasks bg-secondary bg-opacity-25 p-3 rounded">🧠 Daily Tasks</div>
+        </div>
+        <div class="col-md-6">
+            <div class="morning-routine bg-secondary bg-opacity-25 p-3 rounded mb-2">☀️  Morning Routine</div>
+            <div class="evening-routine bg-secondary bg-opacity-25 p-3 rounded">🌙 Evening Routine</div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid p-2 mb-1">
+    <div id="vision-board" class="vision-board bg-secondary bg-opacity-25 rounded d-flex overflow-hidden gap-3 px-2">
+    </div>
+</div>
+<div class="marquee pb-1 text-center align-middle fs-5 fw-semibold">
+    <div class="marquee__item">YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS ·</div>
+    <div class="marquee__item">YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS ·</div>
+</div>
+<script src="{% static 'mirror/js/clock.js' %}"></script>
+<script src="{% static 'mirror/js/visionboard.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
+</body>
+</html>
