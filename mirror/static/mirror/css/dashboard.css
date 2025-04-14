@@ -1,0 +1,167 @@
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,200..900;1,200..900&family=Share+Tech+Mono&family=Sono:wght@200..800&display=swap');
+body {
+  background: black;
+  color: white;
+  font-family: "Sono", sans-serif;
+}
+.clock {
+  font-family: "Share Tech Mono", monospace;
+  font-size: 22pt;
+  height: 50px;
+}
+.info-bar {
+  height: 45px;
+}
+.top-bar {
+  height: 200px;
+}
+.info-bar table {
+  height: 100%;
+  width: 100%;
+}
+.app-bar {
+  width: 50%;
+  height: 75px;
+}
+
+.affirmations {
+  border-radius: 12px;
+  border-collapse: separate; 
+  border: 1px solid gray;
+  height: 150px;
+  width: 100%;
+}
+
+.affirmations-title {
+  font-family: "Sono", sans-serif;
+  font-size: .9rem;
+  text-transform: uppercase;  
+  text-decoration: underline;
+}
+
+.affirmations-text {
+  font-family: "Crimson Pro", serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.5px;
+}
+.calendar {
+  height: 350px;
+  max-height: 350px;
+  overflow-y: auto;
+}
+.daily-tasks {
+  height: 450px;
+}
+.morning-routine {
+  height: 325px;
+}
+.evening-routine {
+  height: 225px;
+}
+.weekly-habits {
+  height: 125px;
+}
+.daily-habits {
+  height: 109px;
+}
+.vision-board {
+  height: 860px;
+}
+.marquee {
+  display: flex ;
+  overflow: hidden ;
+  white-space: nowrap ;
+  width: 100% ;
+}
+.marquee__item {
+  animation-duration: 600s ;
+  animation-iteration-count: infinite ;
+  animation-name: marquee-content ;
+  animation-timing-function: linear ;
+  padding: 1pxl;	
+}
+.marquee:hover .marquee__item {
+  animation-play-state: paused ;
+}
+@keyframes marquee-content {
+  from {
+    transform: translateX( 0% );
+  }
+  to {
+    transform: translateX( -100% );
+  }
+}
+
+#vision-board {
+  height: 850px;
+  position: relative;
+  overflow: hidden;
+}
+
+.vision-col {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 12px;
+  position: relative;
+}
+
+.vision-wrapper {
+  display: flex;
+  flex-direction: column;
+  animation: scroll-vert 6000s linear infinite;
+}
+.vision-wrapper img {
+  padding-bottom: 12px;
+}
+
+.vision-col.reverse .vision-wrapper {
+  animation-direction: reverse;
+}
+
+.vision-img {
+  width: 100%;
+  border-radius: 12px;
+  object-fit: cover;
+  opacity: 50%;
+}
+
+.vision-img:hover {
+  opacity: 100%;
+}
+
+@keyframes scroll-vert {
+  0% {
+    transform: translateY(0%);
+  }
+  100% {
+    transform: translateY(-50%);
+  }
+}
+
+#dock .btn {
+  font-size: 1.2rem;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background-color: black;
+  border-color: black; 
+}
+
+.fadable {
+  transition: opacity 0.8s ease, visibility 0.8s ease;
+}
+
+.mirror-mode .fadable {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.task-scroll {
+  max-height: 100%;
+}
+
+.habit-section {
+  overflow-y: auto;
+}

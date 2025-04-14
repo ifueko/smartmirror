@@ -5,55 +5,114 @@
     <title>FuekOS SmartMirror</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous">
     {% load static %}
+    {% csrf_token %}
     <link href="{% static 'mirror/css/dashboard.css' %}" rel="stylesheet">
 </head>
-<body class="d-flex flex-column min-vh-100 justify-bewteen">
-<div id="clock" class="clock text-center align-middle p-1">HH:MM:ss</div>
-<div class="top-bar container-fluid py-3 d-flex justify-between">
-    <div class="affirmations bg-secondary p-3 flex-grow-1 fw-light fst-italic text-warning">
-    <table>
-      <tbody>
-        <tr>
-          <td class="text-center align-middle"> 💖Affirmations go here💖 </td>
-        </tr>
-      </tbody>
-    </table>
-    </div>
-    <div class="app-bar bg-secondary align-middle">
-        <table>
+<body class="d-flex flex-column min-vh-100 justify-bewteen" data-bs-theme="dark">
+<div class="top-bar mt-2 container-fluid">
+  <div class="row">
+    <div class="col-6">
+        <div id="clock" class="col-12 text-start clock">HH:MM:ss</div>
+        <table class="bg-opacity-25 bg-secondary fadable affirmations">
           <tbody>
             <tr>
-                <td id="player">🎶Spotify</td>
-                <td id="dock">📱App Dock</td>
+              <td class="text-center align-middle">
+                <p class="affirmations-title">DAILY AFFIRMATIONS</p>
+                <p id="affirmations" class="affirmations-text">
+                  💖Affirmations go here 💖
+                </p>
+              </td>
             </tr>
           </tbody>
         </table>
     </div>
+    <div class="col-6">
+      <div class="info-bar">
+      <table>
+        <tbody>
+          <tr>
+            <td id="weather" class="fadable weather text-center">TBA: Weather Forecast</td>
+            <td>
+              <table><tbody><tr>
+                <td id="dock" class="text-end">
+                  <button disabled class="fadable btn btn-sm me-2" disabled title="Sleep (coming soon)">😴</button>
+                  <button disabled class="fadable btn btn-sm me-2" title="Fue’s Closet (coming soon)">👗</button>
+                  <button class="btn btn-sm" id="btn-mirror" title="Mirror Mode">🪞</button>
+                </td>
+              </tr></tbody></table>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+      <div id="player" class="fadable">
+        <iframe style="border-radius:12px; border-color: black;"
+          src="https://open.spotify.com/embed/playlist/0hw7nfcUOOYFeKctlhQcpp?utm_source=generator&theme=0"
+          width="100%" height="152px" frameBorder="0" allowfullscreen=""
+          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy">
+        </iframe>
+      </div>
+    </div>
+  </div>
 </div>
-
-<div class="container-fluid flex-grow-1 p-2">
+<div class="container-fluid p-2">
     <div class="row g-2">
         <div class="col-md-6">
-            <div class="calendar bg-secondary bg-opacity-25 p-3 rounded mb-2">📆 Calendar</div>
-            <div class="daily-tasks bg-secondary bg-opacity-25 p-3 rounded">🧠 Daily Tasks</div>
+            <div class="fadable calendar bg-secondary bg-opacity-25 p-3 rounded mb-2">
+              <div class="fw-bold mb-2">📆 Calendar</div>
+              <div id="agenda-list">
+              </div>
+            </div>
+            <div class="fadable daily-tasks bg-secondary bg-opacity-25 p-3 rounded" id="task-box" style="max-height: 500px; overflow-y: auto;">
+              <div class="fw-bold mb-2">🧠 Today’s Tasks</div>
+              <div class="task-scroll">
+                <ul id="task-list" class="list-group small">
+                  <li class="text-muted"><i>Loading today's tasks...</i></li>
+                </ul>
+              </div>
+            </div>
         </div>
-        <div class="col-md-6">
-            <div class="morning-routine bg-secondary bg-opacity-25 p-3 rounded mb-2">☀️  Morning Routine</div>
-            <div class="evening-routine bg-secondary bg-opacity-25 p-3 rounded">🌙 Evening Routine</div>
+        <div class="fadable routines col-md-6">
+          <div class="habit-section morning-routine bg-secondary bg-opacity-25 p-3 rounded mb-2">
+            <div class="fw-bold mb-2">☀️ Morning Routine</div>
+            <ul id="morning-list" class="list-group small"></ul>
+          </div>
+
+          <div class="habit-section evening-routine bg-secondary bg-opacity-25 p-3 rounded mb-2">
+            <div class="fw-bold mb-2">🌙 Evening Routine</div>
+            <ul id="evening-list" class="list-group small"></ul>
+          </div>
+
+          <div class="habit-section daily-habits bg-secondary bg-opacity-25 p-3 rounded mb-2">
+            <div class="fw-bold mb-2">🌸 Daily Habits</div>
+            <ul id="daily-list" class="list-group small"></ul>
+          </div>
+
+          <div class="habit-section weekly-habits bg-secondary bg-opacity-25 p-3 rounded">
+            <div class="fw-bold mb-2">✨ Weekly Habits</div>
+            <ul id="weekly-list" class="list-group small"></ul>
+          </div>
         </div>
     </div>
 </div>
 
-<div class="container-fluid p-2 mb-1">
-    <div id="vision-board" class="vision-board bg-secondary bg-opacity-25 rounded d-flex overflow-hidden gap-3 px-2">
+<div class="container-fluid pb-2 mb-1">
+    <div id="vision-board" class="fadable vision-board bg-secondary bg-opacity-25 rounded d-flex overflow-hidden gap-3 p-2">
     </div>
 </div>
 <div class="marquee pb-1 text-center align-middle fs-5 fw-semibold">
-    <div class="marquee__item">YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS ·</div>
-    <div class="marquee__item">YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS ·</div>
+    <div class="pl-2 marquee__item">YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS ·&nbsp;</div>
+    <div class="marquee__item">YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS ·&nbsp;</div>
+
 </div>
 <script src="{% static 'mirror/js/clock.js' %}"></script>
-<script src="{% static 'mirror/js/visionboard.js' %}"></script>
+<script src="{% static 'mirror/js/daily_habits.js' %}"></script>
+<script src="{% static 'mirror/js/affirmations.js' %}"></script>
+<script src="{% static 'mirror/js/daily_tasks.js' %}"></script>
+<script src="{% static 'mirror/js/agenda.js' %}"></script>
+<script src="{% static 'mirror/js/vision_board.js' %}"></script>
+<script src="{% static 'mirror/js/mirror_mode.js' %}"></script>
+<script src="{% static 'mirror/js/daily_reload.js' %}"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
 </body>
 </html>

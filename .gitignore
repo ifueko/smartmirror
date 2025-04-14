@@ -9,13 +9,13 @@ venv/
 env/
 .venv/
 .env
+credentials
 */site-packages/
 
 # Django specific
 *.log
 *.pot
 media/
-static/
 local_settings.py
 db.sqlite3
 

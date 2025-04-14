@@ -11,6 +11,14 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from dotenv import load_dotenv
+load_dotenv()
+import os
+NOTION_API_KEY = os.getenv("NOTION_API_KEY")
+NOTION_TASK_DB_ID = os.getenv("NOTION_TASK_DB_ID")
+NOTION_HABIT_DB_ID = os.getenv("NOTION_HABIT_DB_ID")
+GOOGLE_CALENDAR_IDS = os.getenv("GOOGLE_CALENDAR_IDS", "").split(",")
+GOOGLE_CALENDAR_CRED_PATH = os.getenv("GOOGLE_CALENDAR_CRED_PATH")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,8 +33,7 @@ SECRET_KEY = 'django-insecure-(y9#84$h_5n)$mwr94ks0nthx%on*%c1quo)gm=8t571!wd#dg
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = ["*"]
 
 # Application definition
 
@@ -124,3 +131,19 @@ STATICFILES_DIRS = [
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
