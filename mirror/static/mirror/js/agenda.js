@@ -17,10 +17,19 @@ function formatDateHeader(dateStr) {
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
 
+  if (isToday) return "Today";
   if (date.toDateString() === tomorrow.toDateString()) return "Tomorrow";
 
   const options = { weekday: 'long', month: 'short', day: 'numeric' };
   return date.toLocaleDateString(undefined, options);
+}
+
+function getEventDotClass(summary = "") {
+  const lower = summary.toLowerCase();
+  if (lower.includes("meeting")) return "dot-meeting";
+  if (lower.includes("party") || lower.includes("friend")) return "dot-social";
+  if (lower.includes("personal") || lower.includes("self")) return "dot-personal";
+  return "dot-default";
 }
 
 async function loadAgenda() {
@@ -35,33 +44,66 @@ async function loadAgenda() {
   }
 
   let lastDate = null;
+  let todayStr = new Date().toDateString();
 
   data.events.forEach((event) => {
     const start = new Date(event.start);
     const end = new Date(event.end);
     const dateLabel = start.toDateString();
 
-    if (lastDate !== dateLabel) {
+    let section = document.getElementById(`agenda-${dateLabel}`);
+
+    if (!section) {
+      // Create new section
       const header = document.createElement("div");
-      header.className = "fw-bold mt-3";
-      header.textContent = formatDateHeader(start);
+      header.className = "fw-bold collapsible-header mt-2";
+      header.dataset.target = `agenda-${dateLabel}`;
+      header.innerHTML = `<span class="caret-icon me-2">▶</span> ${formatDateHeader(start)}`;
+
+      const content = document.createElement("ul");
+      content.id = `agenda-${dateLabel}`;
+      content.className = "list-group small collapsible-content";
+      if (dateLabel === todayStr) content.classList.add("expanded");
+
       container.appendChild(header);
-      lastDate = dateLabel;
+      container.appendChild(content);
+
+      section = content;
     }
 
-    const item = document.createElement("div");
-    item.className = "agenda-event small border-bottom border-secondary pb-2 mb-2";
+    const li = document.createElement("li");
+    li.className = "list-group-item bg-transparent border-0 p-1";
 
     const timeRange = formatTimeRange(event.start, event.end);
-    item.innerHTML = `
-      <div class="fw-semibold">${timeRange}</div>
-      <div>${event.title}</div>
-      ${event.location ? `<div class="text-muted small">${event.location}</div>` : ""}
+    const dotClass = getEventDotClass(event.title);
+
+    li.innerHTML = `
+      <span class="dot ${dotClass}"></span>
+      🕒 ${timeRange} — <strong>${event.title}</strong>
+      ${event.location ? ` • <span class="text-muted">${event.location}</span>` : ""}
     `;
 
-    container.appendChild(item);
+    section.appendChild(li);
+  });
+
+  // Add header toggle listeners
+  document.querySelectorAll(".collapsible-header").forEach(header => {
+    const targetId = header.dataset.target;
+    const target = document.getElementById(targetId);
+    const caret = header.querySelector(".caret-icon");
+
+    if (!target || !caret) return;
+
+    if (target.classList.contains("expanded")) {
+      caret.classList.add("expanded");
+    }
+
+    header.addEventListener("click", () => {
+      target.classList.toggle("expanded");
+      caret.classList.toggle("expanded");
+    });
   });
 }
 
 document.addEventListener("DOMContentLoaded", loadAgenda);
-setInterval(loadAgenda, 10 * 60 * 1000); // Refresh every 10 minutes
+setInterval(loadAgenda, 10 * 60 * 1000); // Reload every 10 minutes

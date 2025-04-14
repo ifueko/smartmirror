@@ -2,6 +2,7 @@ import datetime
 import json
 import os
 import random
+import requests
 from collections import defaultdict
 from dateutil.parser import parse as parse_date
 from django.conf import settings
@@ -21,7 +22,28 @@ seed_offset_vision_board = 0
 seed_offset_affirmations = 0
 notion = Client(auth=settings.NOTION_API_KEY)
 PRIORITY_ORDER = {"High": 1, "Medium": 2, "Low": 3}
-STATUS_ORDER = {"Done": 1, "Not Started": 2, "In Progress": 3}
+STATUS_ORDER = {"Done": 1, "Not started": 2, "In progress": 3}
+
+def weather_forecast(request):
+    lat = 42.3601
+    lon = -71.0942
+    url = (
+        f"https://api.open-meteo.com/v1/forecast?"
+        f"latitude={lat}&longitude={lon}"
+        f"&current=temperature_2m,apparent_temperature,weather_code"
+        f"&temperature_unit=fahrenheit"
+    )
+    try:
+        r = requests.get(url)
+        data = r.json()["current"]
+        return JsonResponse({
+            "temp": data["temperature_2m"],
+            "feels_like": data["apparent_temperature"],
+            "weather_code": data["weather_code"]
+        })
+    except Exception as e:
+        print(e)
+        return JsonResponse({"error": str(e)}, status=500)
 
 def calendar_feed(request):
     try:
@@ -90,25 +112,43 @@ def fetch_habit_group(request, emoji):  # emoji: ☀️, 🌙, 🌸
 
 def task_feed(request):
     database_id = settings.NOTION_TASK_DB_ID
-    today_str = datetime.date.today().isoformat()
+    now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).astimezone()
+    today_str = now.isoformat()
+    yesterday_str = (now + datetime.timedelta(hours=-24)).isoformat()
     try:
         # 1. Fetch all children tasks due today or earlier
         child_response = notion.databases.query(
             **{
                 "database_id": database_id,
                 "filter": {
-                    "and": [
-                        {
-                            "property": "Date",
-                            "date": {
-                                "on_or_before": today_str
+                    "or": [
+                       {"and": [ 
+                            {
+                                "property": "Date",
+                                "date": {
+                                    "on_or_before": today_str
+                                }
+                            },
+                            {
+                                "property": "Status",
+                                "status": {
+                                    "does_not_equal": "Done"
+                                }
                             }
-                        },
-                        {
-                            "property": "Status",
-                            "status": {
-                                "does_not_equal": "Done"
-                            }
+                        ]},
+                        {"and": [
+                            {
+                                "property": "Status",
+                                "status": {
+                                    "equals": "Done"
+                                }
+                            },
+                            {
+                                "property": "Date",
+                                "date": {
+                                    "on_or_after": yesterday_str
+                                }
+                            }]
                         }
                     ]
                 }
@@ -166,12 +206,18 @@ def task_feed(request):
             parent_lookup[task["id"]] = task
 
     structured = []
+    def compare_child(t):
+        date_cmp = datetime.date.max
+        if t["date"]:
+            date_cmp = t["date"]
+        return (date_cmp , t["priority_value"], t["status_value"])
+
     for parent_id, children in grouped.items():
         parent = parent_lookup.get(parent_id)
         if parent:
             structured.append({
                 "parent": parent,
-                "children": sorted(children, key=lambda t: (t["date"], t["priority_value"], t["status_value"]))
+                "children": sorted(children, key=compare_child)
             })
 
     # Include standalone tasks with no children
@@ -185,11 +231,11 @@ def task_feed(request):
         parent = group['parent']
         date_val = parent["date"] or datetime.date.max
         for child in children:
-            if child["date"] and child["date"] > parent["date"]:
-                date_val = child["date"]
+            if child["date"] and child["date"] is not None:
+                if parent["date"] is None or child["date"] > parent["date"]:
+                    date_val = child["date"]
         return (date_val, parent['priority_value'])
     structured.sort(key=sort_structured)
-    print(structured)
     return JsonResponse({"tasks": structured})
 
 @ensure_csrf_cookie
@@ -197,7 +243,6 @@ def dashboard(request):
     return render(request, "mirror/dashboard.html")
 
 def vision_board_feed(request):
-    print("RENDERING")
     global seed_offset_vision_board
     folder = os.path.join(settings.BASE_DIR, "mirror/static/mirror/vision")
     images = sorted([
@@ -250,4 +295,37 @@ def update_habit(request):
 
     except Exception as e:
         logger.exception("❌ Exception in update_habit")
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@csrf_protect
+@require_POST
+def update_task(request):
+    try:
+        body = request.body.decode("utf-8")
+        data = json.loads(body)
+
+        page_id = data.get("page_id")
+        new_status = data.get("status")  # e.g. "Complete", "In Progress", etc.
+
+        if not page_id or not new_status:
+            logger.error("❌ Missing page_id or status in task update")
+            return JsonResponse({"error": "Missing page_id or status"}, status=400)
+
+        print(f"📝 Updating task {page_id} → status: {new_status}")
+
+        # Update the Notion status field
+        notion.pages.update(
+            page_id=page_id,
+            properties={
+                "Status": {
+                    "status": {"name": new_status}
+                }
+            }
+        )
+
+        return JsonResponse({"success": True})
+
+    except Exception as e:
+        logger.exception("❌ Exception in update_task")
         return JsonResponse({"error": str(e)}, status=500)

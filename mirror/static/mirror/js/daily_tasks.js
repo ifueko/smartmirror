@@ -1,3 +1,21 @@
+function getCSRFToken() {
+  const name = "csrftoken";
+  const cookies = document.cookie.split("; ");
+  for (let cookie of cookies) {
+    if (cookie.startsWith(name + "=")) {
+      return decodeURIComponent(cookie.split("=")[1]);
+    }
+  }
+  return null;
+}
+
+function getStatusClass(status) {
+  if (status === "Done") return "badge-done";
+  if (status === "In progress") return "badge-in-progress";
+  if (status === "Not started") return "badge-not-started";
+  return "";
+}
+
 async function loadTasks() {
   const res = await fetch("/task-feed/");
   const data = await res.json();
@@ -22,37 +40,48 @@ async function loadTasks() {
       const li = document.createElement("li");
       li.className = "list-group-item d-flex justify-content-between align-items-center ps-4";
 
+      // === Left Side: Checkbox + Label ===
+      const leftWrapper = document.createElement("div");
+      leftWrapper.className = "d-flex align-items-center";
+
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
-      checkbox.checked = task.status === "Complete";
+      checkbox.checked = task.status === "Done";
       checkbox.className = "form-check-input me-2";
 
       checkbox.addEventListener("change", async () => {
-        const newStatus = checkbox.checked ? "Complete" : "In Progress"; // or restore previous
-        await fetch("/tasks/update/", {
+        const newStatus = checkbox.checked ? "Done" : "In progress";
+        await fetch("/tasks/update", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCSRFToken(),
+          },
           body: JSON.stringify({
-            id: task.id,
-            status: newStatus
-          })
+            page_id: task.id,
+            status: newStatus,
+          }),
         });
         document.dispatchEvent(new Event("reload-task-list"));
       });
 
       const label = document.createElement("span");
       label.textContent = task.title;
-      label.className = task.status === "Complete" ? "text-decoration-line-through text-muted" : "";
+      if (task.status === "Done" && task.completed_today) {
+        label.className = "text-muted text-decoration-line-through opacity-50";
+      } else if (task.status === "Done") {
+        label.className = "text-muted text-decoration-line-through";
+      }
 
-      li.prepend(checkbox);
-      li.appendChild(label);
+      leftWrapper.appendChild(checkbox);
+      leftWrapper.appendChild(label);
 
+      // === Right Side: Badge ===
       const badge = document.createElement("span");
-      badge.className = `badge rounded-pill ${
-        task.status === "Complete" ? "bg-success" : "bg-warning text-dark"
-      }`;
+      badge.className = `badge rounded-pill ms-2 ${getStatusClass(task.status)}`;
       badge.textContent = task.status;
 
+      li.appendChild(leftWrapper);
       li.appendChild(badge);
       ul.appendChild(li);
     });

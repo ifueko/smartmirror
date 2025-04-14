@@ -10,4 +10,5 @@ urlpatterns = [
     path("habits/<str:emoji>/", views.fetch_habit_group, name="fetch_habit_group"),
     path("habits/update", views.update_habit, name="update_habit"),
     path("tasks/update", views.update_task, name="update_task"),
+    path("weather/", views.weather_forecast, name="weather_forecast"),
 ]

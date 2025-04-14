@@ -47,7 +47,7 @@ async function loadHabits(emoji, containerId) {
         });
       });
       li.appendChild(checkbox);
-      li.appendChild(document.createTextNode(habit.title));
+      li.appendChild(document.createTextNode(habit.title.slice(2).trim()));
       list.appendChild(li);
     });
   } catch (error) {

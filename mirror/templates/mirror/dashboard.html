@@ -31,7 +31,7 @@
       <table>
         <tbody>
           <tr>
-            <td id="weather" class="fadable weather text-center">TBA: Weather Forecast</td>
+            <td id="weather" class="fadable weather text-start">TBA: Weather Forecast</td>
             <td>
               <table><tbody><tr>
                 <td id="dock" class="text-end">
@@ -58,13 +58,15 @@
 <div class="container-fluid p-2">
     <div class="row g-2">
         <div class="col-md-6">
-            <div class="fadable calendar bg-secondary bg-opacity-25 p-3 rounded mb-2">
-              <div class="fw-bold mb-2">📆 Calendar</div>
+            <div class="fadable focus-container calendar bg-secondary bg-opacity-25 p-3 rounded mb-2">
+              <button class="btn btn-sm btn-focus" data-focus-target="agenda-list" data-focus-size="lg">🔍</button>
+              <div class="fw-bold mb-2 focus-title">📆 Calendar</div>
               <div id="agenda-list">
               </div>
             </div>
-            <div class="fadable daily-tasks bg-secondary bg-opacity-25 p-3 rounded" id="task-box" style="max-height: 500px; overflow-y: auto;">
-              <div class="fw-bold mb-2">🧠 Today’s Tasks</div>
+            <div class="fadable focus-container daily-tasks bg-secondary bg-opacity-25 p-3 rounded" id="task-box" style="overflow-y: auto;">
+              <button class="btn btn-sm btn-focus" data-focus-target="task-list" data-focus-size="md">🔍</button>
+              <div class="fw-bold mb-2 focus-title">🧠 Today’s Tasks</div>
               <div class="task-scroll">
                 <ul id="task-list" class="list-group small">
                   <li class="text-muted"><i>Loading today's tasks...</i></li>
@@ -73,23 +75,39 @@
             </div>
         </div>
         <div class="fadable routines col-md-6">
-          <div class="habit-section morning-routine bg-secondary bg-opacity-25 p-3 rounded mb-2">
-            <div class="fw-bold mb-2">☀️ Morning Routine</div>
-            <ul id="morning-list" class="list-group small"></ul>
+          <div class="habit-section focus-container morning-routine bg-secondary bg-opacity-25 p-3 rounded mb-2">
+            <button class="btn btn-sm btn-focus" data-focus-target="morning-list" data-focus-size="md">🔍</button>
+            <div class="fw-bold mb-2 collapsible-header" data-target="#morning-list">
+              <span class="caret-icon me-2">▶</span> 
+              <span class="focus-title">☀️ Morning Routine</span>
+            </div>
+            <ul id="morning-list" class="list-group small collapsible-content" style="display: none;"></ul>
           </div>
 
-          <div class="habit-section evening-routine bg-secondary bg-opacity-25 p-3 rounded mb-2">
-            <div class="fw-bold mb-2">🌙 Evening Routine</div>
+          <div class="habit-section focus-container evening-routine bg-secondary bg-opacity-25 p-3 rounded mb-2">
+            <button class="btn btn-sm btn-focus" data-focus-target="evening-list" data-focus-size="md">🔍</button>
+            <div class="fw-bold mb-2 collapsible-header" data-target="#evening-list">
+              <span class="caret-icon me-2">▶</span> 
+              <span class="focus-title">🌙 Evening Routine</span>
+            </div>
             <ul id="evening-list" class="list-group small"></ul>
           </div>
 
-          <div class="habit-section daily-habits bg-secondary bg-opacity-25 p-3 rounded mb-2">
-            <div class="fw-bold mb-2">🌸 Daily Habits</div>
+          <div class="habit-section focus-container daily-habits bg-secondary bg-opacity-25 p-3 rounded mb-2">
+            <button class="btn btn-sm btn-focus" data-focus-target="daily-list" data-focus-size="md">🔍</button>
+            <div class="fw-bold mb-2 collapsible-header" data-target="#daily-list">
+              <span class="caret-icon me-2">▶</span> 
+              <span class="focus-title">🌸 Daily Habits</span>
+            </div>
             <ul id="daily-list" class="list-group small"></ul>
           </div>
 
-          <div class="habit-section weekly-habits bg-secondary bg-opacity-25 p-3 rounded">
-            <div class="fw-bold mb-2">✨ Weekly Habits</div>
+          <div class="habit-section focus-container weekly-habits bg-secondary bg-opacity-25 p-3 rounded">
+            <button class="btn btn-sm btn-focus" data-focus-target="weekly-list" data-focus-size="md">🔍</button>
+            <div class="fw-bold mb-2 collapsible-header" data-target="#weekly-list">
+              <span class="caret-icon me-2">▶</span> 
+              <span class="focus-title">✨ Weekly Habits</span>
+            </div>
             <ul id="weekly-list" class="list-group small"></ul>
           </div>
         </div>
@@ -97,7 +115,11 @@
 </div>
 
 <div class="container-fluid pb-2 mb-1">
-    <div id="vision-board" class="fadable vision-board bg-secondary bg-opacity-25 rounded d-flex overflow-hidden gap-3 p-2">
+    <div class="focus-container">
+      <button class="btn btn-sm btn-focus" data-focus-target="vision-board" data-focus-size="fullscreen">🔍</button>
+      <div style="display:None" class="focus-title">👁️ Vision Board</div>
+      <div id="vision-board" class="fadable vision-board bg-secondary bg-opacity-25 rounded d-flex overflow-hidden gap-3 p-2">
+      </div>
     </div>
 </div>
 <div class="marquee pb-1 text-center align-middle fs-5 fw-semibold">
@@ -105,13 +127,31 @@
     <div class="marquee__item">YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS ·&nbsp;</div>
 
 </div>
+<!-- Focus Modal -->
+<div class="modal fade" id="focusModal" tabindex="-1" aria-labelledby="focusModalLabel" aria-hidden="true">
+  <div class="modal-dialog" id="focusModalDialog">
+    <div class="modal-content bg-black text-white">
+      <div class="modal-header border-0 justify-content-center position-relative">
+        <h5 class="modal-title text-center w-100" id="focusModalLabel">Focus Mode</h5>
+        <button type="button" class="btn-close btn-close-white position-absolute end-0 me-3" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="focusModalBody">
+        <!-- Section content will be injected here -->
+      </div>
+    </div>
+  </div>
+</div>
+<script src="{% static 'mirror/js/utils.js' %}"></script>
+<script src="{% static 'mirror/js/collapsibles.js' %}"></script>
 <script src="{% static 'mirror/js/clock.js' %}"></script>
+<script src="{% static 'mirror/js/weather.js' %}"></script>
 <script src="{% static 'mirror/js/daily_habits.js' %}"></script>
 <script src="{% static 'mirror/js/affirmations.js' %}"></script>
 <script src="{% static 'mirror/js/daily_tasks.js' %}"></script>
 <script src="{% static 'mirror/js/agenda.js' %}"></script>
 <script src="{% static 'mirror/js/vision_board.js' %}"></script>
 <script src="{% static 'mirror/js/mirror_mode.js' %}"></script>
+<script src="{% static 'mirror/js/focus_mode.js' %}"></script>
 <script src="{% static 'mirror/js/daily_reload.js' %}"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
 </body>

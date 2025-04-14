@@ -1,5 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,200..900;1,200..900&family=Share+Tech+Mono&family=Sono:wght@200..800&display=swap');
+:root {
+  --font-size-base: 1.15rem;
+  --font-size-small: 0.95rem;
+  --font-size-large: 1.4rem;
+}
+
 body {
+  font-size: var(--font-size-base);
+  line-height: 1.5;
   background: black;
   color: white;
   font-family: "Sono", sans-serif;
@@ -45,12 +53,12 @@ body {
   letter-spacing: 0.5px;
 }
 .calendar {
-  height: 350px;
+  height: 250px;
   max-height: 350px;
   overflow-y: auto;
 }
 .daily-tasks {
-  height: 450px;
+  height: 550px;
 }
 .morning-routine {
   height: 325px;
@@ -164,4 +172,111 @@ body {
 
 .habit-section {
   overflow-y: auto;
+}
+
+.focus-container {
+  position: relative;
+}
+
+.btn-focus {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  opacity: 20%;
+  background-color: transparent;
+  border: none;
+  color: white;
+  z-index: 2;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.focus-container:hover .btn-focus {
+  opacity: 1;
+}
+
+.btn-focus:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+}
+
+#focusModal .modal-body {
+  padding: 2rem;
+}
+
+#focusModal .modal-content {
+  background-color: #000;
+  border-radius: 0;
+}
+
+#focusModalBody .focus-clone {
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.modal-content {
+  border-radius: 0;
+}
+body.modal-open .modal-backdrop.show {
+  background-color: rgba(0, 0, 0, 0.9) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.modal-content {
+  background-color: #111 !important;
+  color: #fff;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+}
+
+.collapsible-header {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.2s ease;
+}
+
+.caret-icon {
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.caret-icon.expanded {
+  transform: rotate(90deg);
+}
+
+.collapsible-content {
+  display: none;
+}
+.collapsible-content.expanded {
+  display: block;
+}
+
+.dot {
+  display: inline-block;
+  width: 0.6em;
+  height: 0.6em;
+  border-radius: 50%;
+  margin-right: 0.3em;
+}
+.dot-meeting { background-color: #4da6ff; }
+.dot-social { background-color: #ffc14d; }
+.dot-personal { background-color: #ff85c1; }
+.dot-default { background-color: #aaa; }
+
+.opacity-50 {
+  opacity: 0.5 !important;
+}
+
+.badge-not-started {
+  background-color: #3498db; /* blue */
+  color: #fff;
+}
+
+.badge-in-progress {
+  background-color: #9b59b6; /* purple */
+  color: #fff;
+}
+
+.badge-done {
+  background-color: #e74c3c; /* red */
+  color: #fff;
 }
