@@ -90,8 +90,13 @@ async function loadTasks() {
       ul.classList.toggle("d-none");
     });
 
+    //list.appendChild(parent);
+    //if (group.children.length) list.appendChild(ul);
     list.appendChild(parent);
-    if (group.children.length) list.appendChild(ul);
+    if (group.children.length) {
+      ul.classList.add("d-none");  // collapse by default
+      list.appendChild(ul);
+    }
   });
 }
 

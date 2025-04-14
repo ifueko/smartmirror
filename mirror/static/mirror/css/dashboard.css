@@ -1,8 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,200..900;1,200..900&family=Share+Tech+Mono&family=Sono:wght@200..800&display=swap');
 :root {
-  --font-size-base: 1.15rem;
-  --font-size-small: 0.95rem;
-  --font-size-large: 1.4rem;
+  --font-size-base: clamp(0.9rem, 1.2vw, 1.25rem);
+  --font-size-small: clamp(0.75rem, 0.95vw, 1rem);
+  --font-size-title: clamp(1rem, 1.8vw, 1.5rem);
+  --font-size-header: clamp(1.25rem, 2vw, 2rem);
 }
 
 body {
@@ -36,7 +37,7 @@ body {
   border-radius: 12px;
   border-collapse: separate; 
   border: 1px solid gray;
-  height: 150px;
+  height: 147px;
   width: 100%;
 }
 
@@ -279,4 +280,28 @@ body.modal-open .modal-backdrop.show {
 .badge-done {
   background-color: #e74c3c; /* red */
   color: #fff;
+}
+li.text-muted {
+  list-style: none;
+  padding-left: 0;
+  margin-left: 0;
+  font-style: italic;
+  color: #aaa; /* adjust this if needed */
+  opacity: 0.7; /* softer look */
+}
+
+.list-group-item {
+  font-size: var(--font-size-small);
+}
+
+.list-group-item {
+  font-size: var(--font-size-small);
+}
+.habit-section .fw-bold,
+.calendar .fw-bold,
+.daily-tasks .fw-bold {
+  font-size: var(--font-size-title);
+}
+#clock {
+  font-size: var(--font-size-header);
 }

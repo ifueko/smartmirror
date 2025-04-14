@@ -20,6 +20,16 @@ async function loadHabits(emoji, containerId) {
       list.innerHTML = "<li class='text-muted'>No habits found.</li>";
       return;
     }
+    const now = new Date();
+    const hour = now.getHours();
+    const shouldExpand = (
+      (emoji === "☀️" && hour < 12) ||              // Morning before 12 PM
+      ((emoji === "🌸" || emoji === "✨") && hour >= 12 && hour < 17) || // Daily/Weekly between 12–5 PM
+      (emoji === "🌙" && hour >= 17)                // Evening after 5 PM
+    );
+    if (!shouldExpand) {
+      list.classList.add("d-none");
+    }
 
     data.habits.forEach((habit) => {
       const li = document.createElement("li");

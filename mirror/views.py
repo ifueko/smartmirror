@@ -22,7 +22,7 @@ seed_offset_vision_board = 0
 seed_offset_affirmations = 0
 notion = Client(auth=settings.NOTION_API_KEY)
 PRIORITY_ORDER = {"High": 1, "Medium": 2, "Low": 3}
-STATUS_ORDER = {"Done": 1, "Not started": 2, "In progress": 3}
+STATUS_ORDER = {"Done": 3, "Not started": 1, "In progress": 2}
 
 def weather_forecast(request):
     lat = 42.3601
@@ -210,7 +210,7 @@ def task_feed(request):
         date_cmp = datetime.date.max
         if t["date"]:
             date_cmp = t["date"]
-        return (date_cmp , t["priority_value"], t["status_value"])
+        return (date_cmp , t["status_value"], t["priority_value"])
 
     for parent_id, children in grouped.items():
         parent = parent_lookup.get(parent_id)
