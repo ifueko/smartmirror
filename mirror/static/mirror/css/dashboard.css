@@ -229,12 +229,6 @@ body.modal-open .modal-backdrop.show {
   box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
 }
 
-.collapsible-header {
-  cursor: pointer;
-  user-select: none;
-  transition: color 0.2s ease;
-}
-
 .caret-icon {
   display: inline-block;
   transition: transform 0.3s ease;
@@ -242,13 +236,6 @@ body.modal-open .modal-backdrop.show {
 
 .caret-icon.expanded {
   transform: rotate(90deg);
-}
-
-.collapsible-content {
-  display: none;
-}
-.collapsible-content.expanded {
-  display: block;
 }
 
 .dot {
@@ -305,15 +292,6 @@ li.text-muted {
 #clock {
   font-size: var(--font-size-header);
 }
-/* Make scroll areas and list backgrounds transparent */
-.list-group,
-.collapse-group,
-.scroll-wrapper {
-  background-color: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-
 /* Remove outlines from interactive elements */
 input:focus,
 button:focus,

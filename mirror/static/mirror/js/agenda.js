@@ -56,19 +56,29 @@ async function loadAgenda() {
     if (!section) {
       // Create new section
       const header = document.createElement("div");
-      header.className = "fw-bold collapsible-header mt-2";
+      header.className = "fw-bold mt-2";
       header.dataset.target = `agenda-${dateLabel}`;
       header.innerHTML = `<span class="caret-icon me-2">▶</span> ${formatDateHeader(start)}`;
 
       const content = document.createElement("ul");
       content.id = `agenda-${dateLabel}`;
       content.className = "list-group small collapsible-content";
-      if (dateLabel === todayStr) content.classList.add("expanded");
+      if (dateLabel === todayStr) {
+        caret.classList.add("expanded");
+      } else {
+        content.classList.toggle("d-none");
+      }
 
       container.appendChild(header);
       container.appendChild(content);
 
       section = content;
+      header.addEventListener("click", () => {
+        content.classList.toggle("d-none");
+        const caret = header.querySelector(".caret-icon");
+        caret?.classList.toggle("expanded");
+      });
+
     }
 
     const li = document.createElement("li");
