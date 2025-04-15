@@ -75,21 +75,22 @@
             </div>
         </div>
         <div class="fadable routines col-md-6">
+
           <div class="habit-section focus-container morning-routine bg-secondary bg-opacity-25 p-3 rounded mb-2">
             <button class="btn btn-sm btn-focus" data-focus-target="morning-list" data-focus-size="md">🔍</button>
-            <div class="fw-bold mb-2 collapsible-header" data-target="#morning-list">
-              <span class="caret-icon me-2">▶</span> 
+            <div class="fw-bold mb-2 " data-target="#morning-list">
+              <span class="caret-icon me-2">▶</span>
               <span class="focus-title">☀️ Morning Routine</span>
             </div>
-            <ul id="morning-list" class="list-group small collapsible-content" style="display: none;">
+            <ul id="morning-list" class="list-group small">
               <li class="text-muted"><i>Loading today's morning routine...</i></li>
             </ul>
           </div>
 
           <div class="habit-section focus-container evening-routine bg-secondary bg-opacity-25 p-3 rounded mb-2">
             <button class="btn btn-sm btn-focus" data-focus-target="evening-list" data-focus-size="md">🔍</button>
-            <div class="fw-bold mb-2 collapsible-header" data-target="#evening-list">
-              <span class="caret-icon me-2">▶</span> 
+            <div class="fw-bold mb-2" data-target="#evening-list">
+              <span class="caret-icon me-2">▶</span>
               <span class="focus-title">🌙 Evening Routine</span>
             </div>
             <ul id="evening-list" class="list-group small">
@@ -99,8 +100,8 @@
 
           <div class="habit-section focus-container daily-habits bg-secondary bg-opacity-25 p-3 rounded mb-2">
             <button class="btn btn-sm btn-focus" data-focus-target="daily-list" data-focus-size="md">🔍</button>
-            <div class="fw-bold mb-2 collapsible-header" data-target="#daily-list">
-              <span class="caret-icon me-2">▶</span> 
+            <div class="fw-bold mb-2" data-target="#daily-list">
+              <span class="caret-icon me-2">▶</span>
               <span class="focus-title">🌸 Daily Habits</span>
             </div>
             <ul id="daily-list" class="list-group small">
@@ -110,8 +111,8 @@
 
           <div class="habit-section focus-container weekly-habits bg-secondary bg-opacity-25 p-3 rounded">
             <button class="btn btn-sm btn-focus" data-focus-target="weekly-list" data-focus-size="md">🔍</button>
-            <div class="fw-bold mb-2 collapsible-header" data-target="#weekly-list">
-              <span class="caret-icon me-2">▶</span> 
+            <div class="fw-bold mb-2" data-target="#weekly-list">
+              <span class="caret-icon me-2">▶</span>
               <span class="focus-title">✨ Weekly Habits</span>
             </div>
             <ul id="weekly-list" class="list-group small">
@@ -150,7 +151,6 @@
   </div>
 </div>
 <script src="{% static 'mirror/js/utils.js' %}"></script>
-<script src="{% static 'mirror/js/collapsibles.js' %}"></script>
 <script src="{% static 'mirror/js/clock.js' %}"></script>
 <script src="{% static 'mirror/js/weather.js' %}"></script>
 <script src="{% static 'mirror/js/daily_habits.js' %}"></script>

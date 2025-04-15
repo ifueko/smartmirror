@@ -11,23 +11,36 @@ function getCSRFToken() {
 
 async function loadHabits(emoji, containerId) {
   try {
+    const list = document.getElementById(containerId);
+    const section = list.closest(".habit-section");
+
+    // Set default loading state
+    list.innerHTML = "<li class='text-muted'><i>Loading...</i></li>";
+
     const res = await fetch(`/habits/${encodeURIComponent(emoji)}/`);
     const data = await res.json();
-    const list = document.getElementById(containerId);
+    const now = new Date();
+    const hour = now.getHours();
+    const shouldExpand = (
+      (emoji === "☀️" && hour < 12) ||
+      ((emoji === "🌸" || emoji === "✨") && hour >= 12 && hour < 17) ||
+      (emoji === "🌙" && hour >= 17)
+    );
+
     list.innerHTML = "";
 
     if (!data.habits || data.habits.length === 0) {
       list.innerHTML = "<li class='text-muted'>No habits found.</li>";
       return;
     }
-    const now = new Date();
-    const hour = now.getHours();
-    const shouldExpand = (
-      (emoji === "☀️" && hour < 12) ||              // Morning before 12 PM
-      ((emoji === "🌸" || emoji === "✨") && hour >= 12 && hour < 17) || // Daily/Weekly between 12–5 PM
-      (emoji === "🌙" && hour >= 17)                // Evening after 5 PM
-    );
-    if (!shouldExpand) {
+    const caret = section.querySelector(".caret-icon");
+    caret.addEventListener("click", () => {
+      caret.classList.toggle("expanded");
+      list.classList.toggle("d-none");
+    });
+    if (shouldExpand) {
+      caret.classList.add("expanded");
+    } else {
       list.classList.add("d-none");
     }
 
@@ -39,9 +52,9 @@ async function loadHabits(emoji, containerId) {
       checkbox.type = "checkbox";
       checkbox.checked = habit.done;
       checkbox.className = "form-check-input me-2";
-      console.log(getCSRFToken());
+
       checkbox.addEventListener("change", async () => {
-        let result = await fetch("/habits/update", {
+        await fetch("/habits/update", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -52,10 +65,9 @@ async function loadHabits(emoji, containerId) {
             property: habit.property,
             done: checkbox.checked
           })
-        }).then(response => {
-
         });
       });
+
       li.appendChild(checkbox);
       li.appendChild(document.createTextNode(habit.title.slice(2).trim()));
       list.appendChild(li);
@@ -77,6 +89,7 @@ function loadAllHabitSections() {
     loadHabits(emoji, containerId);
   }
 }
+
 document.addEventListener("DOMContentLoaded", loadAllHabitSections);
 setInterval(loadAllHabitSections, 10 * 60 * 1000);
 document.addEventListener("reload-habits", loadAllHabitSections);

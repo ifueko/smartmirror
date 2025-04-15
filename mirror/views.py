@@ -14,6 +14,9 @@ from googleapiclient.discovery import build
 from notion_client import Client
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from django.views.decorators.http import require_POST
+import pytz
+local_tz = pytz.timezone("America/New_York")  # or whatever your timezone is
+
 
 import logging
 logger = logging.getLogger(__name__)
@@ -55,7 +58,7 @@ def calendar_feed(request):
         service = build('calendar', 'v3', credentials=creds)
         events = []
         # Time range for the next 48 hours
-        now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).astimezone()
+        now = datetime.datetime.now(local_tz)
         time_min = now.isoformat()
         time_max = (now + datetime.timedelta(hours=48)).isoformat()
         for calendar_id in calendar_ids:
@@ -112,9 +115,9 @@ def fetch_habit_group(request, emoji):  # emoji: ☀️, 🌙, 🌸
 
 def task_feed(request):
     database_id = settings.NOTION_TASK_DB_ID
-    now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).astimezone()
+    now = datetime.datetime.now(local_tz)
     today_str = now.isoformat()
-    yesterday_str = (now + datetime.timedelta(hours=-24)).isoformat()
+    print("TODAY IS ", now, today_str)
     try:
         # 1. Fetch all children tasks due today or earlier
         child_response = notion.databases.query(
@@ -122,7 +125,8 @@ def task_feed(request):
                 "database_id": database_id,
                 "filter": {
                     "or": [
-                       {"and": [ 
+                       {
+                        "and": [ 
                             {
                                 "property": "Date",
                                 "date": {
@@ -135,7 +139,8 @@ def task_feed(request):
                                     "does_not_equal": "Done"
                                 }
                             }
-                        ]},
+                        ]
+                        },
                         {"and": [
                             {
                                 "property": "Status",
@@ -146,7 +151,7 @@ def task_feed(request):
                             {
                                 "property": "Date",
                                 "date": {
-                                    "on_or_after": yesterday_str
+                                   "equals": today_str
                                 }
                             }]
                         }
@@ -155,7 +160,7 @@ def task_feed(request):
             }
         )
         child_tasks = child_response.get("results", [])
-
+        child_tasks = [task for task in child_tasks if task["properties"]["Date"]["date"] and task["properties"]["Date"]["date"]["start"] <= today_str]
         # 2. Collect parent IDs
         parent_ids = {
             task["properties"]["Parent item"]["relation"][0]["id"]
@@ -176,7 +181,8 @@ def task_feed(request):
     except Exception as e:
         print(e)
         return JsonResponse({"error": str(e)}, status=500)
-    tasks = []
+    # 1. Process flat tasks
+    flat_tasks = {}
     for task in raw_tasks:
         props = task["properties"]
         name = props["Name"]["title"][0]["plain_text"] if props["Name"]["title"] else "Untitled"
@@ -185,7 +191,8 @@ def task_feed(request):
         parent_id = props["Parent item"]["relation"][0]["id"] if props["Parent item"]["relation"] else None
         date_prop = props["Date"]["date"]["start"] if props["Date"]["date"] else None
         parsed_date = parse_date(date_prop) if date_prop else None
-        tasks.append({
+        print(name, date_prop, parsed_date)
+        flat_tasks[task["id"]] = {
             "id": task["id"],
             "title": name,
             "date": parsed_date,
@@ -194,49 +201,34 @@ def task_feed(request):
             "priority_value": PRIORITY_ORDER.get(priority, 99),
             "status_value": STATUS_ORDER.get(status, 99),
             "parent_id": parent_id,
-        })
+            "children": []
+        }
 
-    grouped = defaultdict(list)
-    parent_lookup = {}
+    # 2. Build hierarchy
+    root_tasks = []
 
-    for task in tasks:
-        if task["parent_id"]:
-            grouped[task["parent_id"]].append(task)
+    for task_id, task in flat_tasks.items():
+        parent_id = task["parent_id"]
+        if parent_id and parent_id in flat_tasks:
+            flat_tasks[parent_id]["children"].append(task)
         else:
-            parent_lookup[task["id"]] = task
+            root_tasks.append(task)
 
-    structured = []
-    def compare_child(t):
-        date_cmp = datetime.date.max
-        if t["date"]:
-            date_cmp = t["date"]
-        return (date_cmp , t["status_value"], t["priority_value"])
+    # 3. Sort children at each level
+    def sort_task_tree(tasks):
+        def sort_key(t):
+            return (
+                t["date"] or datetime.date.max,
+                t["status_value"],
+                t["priority_value"]
+            )
+        tasks.sort(key=sort_key)
+        for t in tasks:
+            sort_task_tree(t["children"])
 
-    for parent_id, children in grouped.items():
-        parent = parent_lookup.get(parent_id)
-        if parent:
-            structured.append({
-                "parent": parent,
-                "children": sorted(children, key=compare_child)
-            })
-
-    # Include standalone tasks with no children
-    standalone = [
-        task for task in tasks
-        if task["id"] not in grouped and task["parent_id"] is None
-    ]
-    for task in sorted(standalone, key=lambda t: t["priority_value"]):
-        structured.append({"parent": task, "children": []})
-    def sort_structured(group):
-        parent = group['parent']
-        date_val = parent["date"] or datetime.date.max
-        for child in children:
-            if child["date"] and child["date"] is not None:
-                if parent["date"] is None or child["date"] > parent["date"]:
-                    date_val = child["date"]
-        return (date_val, parent['priority_value'])
-    structured.sort(key=sort_structured)
-    return JsonResponse({"tasks": structured})
+    sort_task_tree(root_tasks)
+    # 4. Return final tree
+    return JsonResponse({"tasks": root_tasks})
 
 @ensure_csrf_cookie
 def dashboard(request):

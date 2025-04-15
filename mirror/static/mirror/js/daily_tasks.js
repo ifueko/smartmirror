@@ -15,6 +15,86 @@ function getStatusClass(status) {
   if (status === "Not started") return "badge-not-started";
   return "";
 }
+function renderTaskNode(task, depth = 0) {
+  const li = document.createElement("li");
+  li.className = "list-group-item d-flex justify-content-between align-items-start ps-" + (2 + depth * 2);
+
+  // === Left Side: Checkbox + Label ===
+  const leftWrapper = document.createElement("div");
+  leftWrapper.className = "d-flex align-items-center";
+
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = task.status === "Done";
+  checkbox.className = "form-check-input me-2";
+
+  checkbox.addEventListener("change", async () => {
+    const newStatus = checkbox.checked ? "Done" : "In progress";
+    await fetch("/tasks/update", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCSRFToken(),
+      },
+      body: JSON.stringify({
+        page_id: task.id,
+        status: newStatus,
+      }),
+    });
+    document.dispatchEvent(new Event("reload-task-list"));
+  });
+
+  const label = document.createElement("span");
+  label.textContent = task.title;
+  if (task.status === "Done") {
+    label.className = "text-muted text-decoration-line-through opacity-75";
+  }
+
+  leftWrapper.appendChild(checkbox);
+  leftWrapper.appendChild(label);
+
+  // === Right Side: Badge ===
+  const badge = document.createElement("span");
+  badge.className = `badge rounded-pill ms-2 ${getStatusClass(task.status)}`;
+
+  const dateObj = task.date ? new Date(task.date) : null;
+  const dateString = dateObj
+    ? `📅 ${dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}`
+    : "";
+
+  badge.innerHTML = `<strong>${dateString}</strong> | ${task.status}`;
+
+  li.appendChild(leftWrapper);
+  li.appendChild(badge);
+
+  const group = document.createElement("ul");
+  group.className = "list-group collapse-group mb-2";
+  if (task.children && task.children.length > 0) {
+    const header = document.createElement("li");
+    header.className = "list-group-item fw-bold parent-task ps-" + (1 + depth * 2);
+    header.style.cursor = "pointer";
+    header.innerHTML = `<span class="caret-icon me-2">▶</span> 📝 ${task.title}`; 
+
+    header.addEventListener("click", () => {
+      group.classList.toggle("d-none");
+      const caret = header.querySelector(".caret-icon");
+      caret?.classList.toggle("expanded");
+    });
+    group.classList.add("d-none");
+      
+  
+    task.children.forEach(child => {
+      group.appendChild(renderTaskNode(child, depth + 1));
+    });
+  
+    const wrapper = document.createElement("div");
+    wrapper.appendChild(header);
+    wrapper.appendChild(group);
+    return wrapper;
+  } else {
+    return li;
+  }
+}
 
 async function loadTasks() {
   const res = await fetch("/task-feed/");
@@ -27,76 +107,8 @@ async function loadTasks() {
     return;
   }
 
-  data.tasks.forEach((group) => {
-    const parent = document.createElement("li");
-    parent.className = "list-group-item fw-bold parent-task";
-    parent.textContent = `📝 ${group.parent.title}`;
-    parent.style.cursor = "pointer";
-
-    const ul = document.createElement("ul");
-    ul.className = "list-group mb-2 collapse-group";
-
-    group.children.forEach((task) => {
-      const li = document.createElement("li");
-      li.className = "list-group-item d-flex justify-content-between align-items-center ps-4";
-
-      // === Left Side: Checkbox + Label ===
-      const leftWrapper = document.createElement("div");
-      leftWrapper.className = "d-flex align-items-center";
-
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.checked = task.status === "Done";
-      checkbox.className = "form-check-input me-2";
-
-      checkbox.addEventListener("change", async () => {
-        const newStatus = checkbox.checked ? "Done" : "In progress";
-        await fetch("/tasks/update", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": getCSRFToken(),
-          },
-          body: JSON.stringify({
-            page_id: task.id,
-            status: newStatus,
-          }),
-        });
-        document.dispatchEvent(new Event("reload-task-list"));
-      });
-
-      const label = document.createElement("span");
-      label.textContent = task.title;
-      if (task.status === "Done" && task.completed_today) {
-        label.className = "text-muted text-decoration-line-through opacity-50";
-      } else if (task.status === "Done") {
-        label.className = "text-muted text-decoration-line-through";
-      }
-
-      leftWrapper.appendChild(checkbox);
-      leftWrapper.appendChild(label);
-
-      // === Right Side: Badge ===
-      const badge = document.createElement("span");
-      badge.className = `badge rounded-pill ms-2 ${getStatusClass(task.status)}`;
-      badge.textContent = task.status;
-
-      li.appendChild(leftWrapper);
-      li.appendChild(badge);
-      ul.appendChild(li);
-    });
-
-    parent.addEventListener("click", () => {
-      ul.classList.toggle("d-none");
-    });
-
-    //list.appendChild(parent);
-    //if (group.children.length) list.appendChild(ul);
-    list.appendChild(parent);
-    if (group.children.length) {
-      ul.classList.add("d-none");  // collapse by default
-      list.appendChild(ul);
-    }
+  data.tasks.forEach(task => {
+    list.appendChild(renderTaskNode(task));
   });
 }
 

@@ -305,3 +305,27 @@ li.text-muted {
 #clock {
   font-size: var(--font-size-header);
 }
+/* Make scroll areas and list backgrounds transparent */
+.list-group,
+.collapse-group,
+.scroll-wrapper {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Remove outlines from interactive elements */
+input:focus,
+button:focus,
+li:focus,
+.parent-task:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Optional: make sure list items have consistent dark mode styling */
+.list-group-item {
+  background-color: transparent !important;
+  border: none !important;
+  color: #f5f5f5;
+}

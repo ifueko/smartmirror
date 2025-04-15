@@ -4,3 +4,4 @@ google-auth
 notion_client
 python-dateutil
 python-dotenv
+pytz
