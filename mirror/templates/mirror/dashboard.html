@@ -60,17 +60,21 @@
         <div class="col-md-6">
             <div class="fadable focus-container calendar bg-secondary bg-opacity-25 p-3 rounded mb-2">
               <button class="btn btn-sm btn-focus" data-focus-target="agenda-list" data-focus-size="lg">🔍</button>
-              <div class="fw-bold mb-2 focus-title">📆 Calendar</div>
-              <div id="agenda-list">
+                <div class="fw-bold mb-2 focus-title">📆 Calendar</div>
+              <div class="card-content-wrapper">
+                <div id="agenda-list">
+                </div>
               </div>
             </div>
             <div class="fadable focus-container daily-tasks bg-secondary bg-opacity-25 p-3 rounded" id="task-box" style="overflow-y: auto;">
-              <button class="btn btn-sm btn-focus" data-focus-target="task-list" data-focus-size="md">🔍</button>
+              <button class="btn btn-sm btn-focus" data-focus-target="task-list" data-focus-size="xl">🔍</button>
               <div class="fw-bold mb-2 focus-title">🧠 Today’s Tasks</div>
+              <div class="card-content-wrapper">
               <div class="task-scroll">
                 <ul id="task-list" class="list-group small">
                   <li class="text-muted"><i>Loading today's tasks...</i></li>
                 </ul>
+              </div>
               </div>
             </div>
         </div>
@@ -82,9 +86,11 @@
               <span class="caret-icon me-2">▶</span>
               <span class="focus-title">☀️ Morning Routine</span>
             </div>
+            <div class="card-content-wrapper">
             <ul id="morning-list" class="list-group small">
               <li class="text-muted"><i>Loading today's morning routine...</i></li>
             </ul>
+          </div>
           </div>
 
           <div class="habit-section focus-container evening-routine bg-secondary bg-opacity-25 p-3 rounded mb-2">
@@ -93,9 +99,11 @@
               <span class="caret-icon me-2">▶</span>
               <span class="focus-title">🌙 Evening Routine</span>
             </div>
+            <div class="card-content-wrapper">
             <ul id="evening-list" class="list-group small">
               <li class="text-muted"><i>Loading today's evening routine...</i></li>
             </ul>
+            </div>
           </div>
 
           <div class="habit-section focus-container daily-habits bg-secondary bg-opacity-25 p-3 rounded mb-2">
@@ -104,9 +112,11 @@
               <span class="caret-icon me-2">▶</span>
               <span class="focus-title">🌸 Daily Habits</span>
             </div>
+            <div class="card-content-wrapper">
             <ul id="daily-list" class="list-group small">
               <li class="text-muted"><i>Loading today's daily habits...</i></li>
             </ul>
+            </div>
           </div>
 
           <div class="habit-section focus-container weekly-habits bg-secondary bg-opacity-25 p-3 rounded">
@@ -115,9 +125,11 @@
               <span class="caret-icon me-2">▶</span>
               <span class="focus-title">✨ Weekly Habits</span>
             </div>
+            <div class="card-content-wrapper">
             <ul id="weekly-list" class="list-group small">
               <li class="text-muted"><i>Loading weekly habits...</i></li>
             </ul>
+            </div>
           </div>
         </div>
     </div>

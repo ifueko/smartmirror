@@ -64,7 +64,7 @@ async function loadAgenda() {
       content.id = `agenda-${dateLabel}`;
       content.className = "list-group small collapsible-content";
       if (dateLabel === todayStr) {
-        caret.classList.add("expanded");
+        header.querySelector(".caret-icon").classList.add("expanded");
       } else {
         content.classList.toggle("d-none");
       }

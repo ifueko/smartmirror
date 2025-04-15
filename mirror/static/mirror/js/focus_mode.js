@@ -17,6 +17,8 @@ document.addEventListener("DOMContentLoaded", () => {
         modalDialog.className = "modal-dialog"; // Clear previous size
         if (size === "fullscreen") {
           modalDialog.classList.add("modal-fullscreen");
+        } else if (size === "xl") {
+          modalDialog.classList.add("modal-xl");
         } else if (size === "lg") {
           modalDialog.classList.add("modal-lg");
         } else if (size === "md") {
