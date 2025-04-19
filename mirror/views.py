@@ -26,6 +26,7 @@ seed_offset_affirmations = 0
 notion = Client(auth=settings.NOTION_API_KEY)
 PRIORITY_ORDER = {"High": 1, "Medium": 2, "Low": 3}
 STATUS_ORDER = {"Done": 3, "Not started": 1, "In progress": 2}
+VISION_BOARD_IMAGE_COUNT = 24
 
 def weather_forecast(request):
     lat = 42.3601
@@ -245,7 +246,7 @@ def vision_board_feed(request):
     seed = int(datetime.date.today().strftime("%Y%m%d")) + 42 + seed_offset_vision_board
     seed_offset_vision_board -= 1
     random.Random(seed).shuffle(images)
-    return JsonResponse({"images": images[:50]})
+    return JsonResponse({"images": images[:VISION_BOARD_IMAGE_COUNT]})
 
 def affirmations_feed(request):
     global seed_offset_affirmations
@@ -258,7 +259,7 @@ def affirmations_feed(request):
     seed = int(datetime.date.today().strftime("%Y%m%d")) + 42 + seed_offset_affirmations
     seed_offset_affirmations -= 1 # on refresh show yesterday's affirmations
     random.Random(seed).shuffle(affirmations)
-    affirmations = affirmations[:2] # get top 2 affirmations
+    affirmations = affirmations[:1] # get top affirmation
     return JsonResponse({"affirmations": affirmations})
 
 def update_task(request):

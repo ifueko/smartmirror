@@ -9,11 +9,13 @@
     <link href="{% static 'mirror/css/dashboard.css' %}" rel="stylesheet">
 </head>
 <body class="d-flex flex-column min-vh-100 justify-bewteen" data-bs-theme="dark">
+<main class="flex-grow-1">
 <div class="top-bar mt-2 container-fluid">
   <div class="row">
     <div class="col-6">
-        <div id="clock" class="col-12 text-start clock">HH:MM:ss</div>
-        <table class="bg-opacity-25 bg-secondary fadable affirmations pb-3">
+      <div id="clock" class="col-12 text-start clock">HH:MM:ss</div>
+      <div class="fadable affirmations">
+        <table class="bg-opacity-25 content-bg pb-3">
           <tbody>
             <tr>
               <td class="text-center align-middle">
@@ -25,6 +27,7 @@
             </tr>
           </tbody>
         </table>
+      </div>
     </div>
     <div class="col-6">
       <div class="info-bar">
@@ -48,7 +51,7 @@
       <div id="player" class="fadable">
         <iframe style="border-radius:12px; border-color: black;"
           src="https://open.spotify.com/embed/playlist/0hw7nfcUOOYFeKctlhQcpp?utm_source=generator&theme=0"
-          width="100%" height="152px" frameBorder="0" allowfullscreen=""
+          width="100%" height="352px" frameBorder="0" allowfullscreen=""
           allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy">
         </iframe>
       </div>
@@ -58,7 +61,7 @@
 <div class="container-fluid p-2">
     <div class="row g-2">
         <div class="col-md-6">
-            <div class="fadable focus-container calendar bg-secondary bg-opacity-25 p-3 rounded mb-2">
+            <div class="fadable focus-container calendar content-bg bg-opacity-25 p-3 rounded mb-2">
               <button class="btn btn-sm btn-focus" data-focus-target="agenda-list" data-focus-size="lg">🔍</button>
                 <div class="fw-bold mb-2 focus-title">📆 Calendar</div>
               <div class="card-content-wrapper">
@@ -66,7 +69,7 @@
                 </div>
               </div>
             </div>
-            <div class="fadable focus-container daily-tasks bg-secondary bg-opacity-25 p-3 rounded" id="task-box" style="overflow-y: auto;">
+            <div class="fadable focus-container daily-tasks content-bg bg-opacity-25 p-3 rounded" id="task-box" style="overflow-y: auto;">
               <button class="btn btn-sm btn-focus" data-focus-target="task-list" data-focus-size="xl">🔍</button>
               <div class="fw-bold mb-2 focus-title">🧠 Today’s Tasks</div>
               <div class="card-content-wrapper">
@@ -80,7 +83,7 @@
         </div>
         <div class="fadable routines col-md-6">
 
-          <div class="habit-section focus-container morning-routine bg-secondary bg-opacity-25 p-3 rounded mb-2">
+          <div class="habit-section focus-container morning-routine content-bg bg-opacity-25 p-3 rounded mb-2">
             <button class="btn btn-sm btn-focus" data-focus-target="morning-list" data-focus-size="md">🔍</button>
             <div class="fw-bold mb-2 " data-target="#morning-list">
               <span class="caret-icon me-2">▶</span>
@@ -93,7 +96,7 @@
           </div>
           </div>
 
-          <div class="habit-section focus-container evening-routine bg-secondary bg-opacity-25 p-3 rounded mb-2">
+          <div class="habit-section focus-container evening-routine content-bg bg-opacity-25 p-3 rounded mb-2">
             <button class="btn btn-sm btn-focus" data-focus-target="evening-list" data-focus-size="md">🔍</button>
             <div class="fw-bold mb-2" data-target="#evening-list">
               <span class="caret-icon me-2">▶</span>
@@ -106,7 +109,7 @@
             </div>
           </div>
 
-          <div class="habit-section focus-container daily-habits bg-secondary bg-opacity-25 p-3 rounded mb-2">
+          <div class="habit-section focus-container daily-habits content-bg bg-opacity-25 p-3 rounded mb-2">
             <button class="btn btn-sm btn-focus" data-focus-target="daily-list" data-focus-size="md">🔍</button>
             <div class="fw-bold mb-2" data-target="#daily-list">
               <span class="caret-icon me-2">▶</span>
@@ -119,7 +122,7 @@
             </div>
           </div>
 
-          <div class="habit-section focus-container weekly-habits bg-secondary bg-opacity-25 p-3 rounded">
+          <div class="habit-section focus-container weekly-habits content-bg bg-opacity-25 p-3 rounded">
             <button class="btn btn-sm btn-focus" data-focus-target="weekly-list" data-focus-size="md">🔍</button>
             <div class="fw-bold mb-2" data-target="#weekly-list">
               <span class="caret-icon me-2">▶</span>
@@ -135,14 +138,23 @@
     </div>
 </div>
 
-<div class="container-fluid pb-2 mb-1">
-    <div class="focus-container">
-      <button class="btn btn-sm btn-focus" data-focus-target="vision-board" data-focus-size="fullscreen">🔍</button>
-      <div style="display:None" class="focus-title">👁️ Vision Board</div>
-      <div id="vision-board" class="fadable vision-board bg-secondary bg-opacity-25 rounded d-flex overflow-hidden gap-3 p-2">
+<div class="flex-grow-1 d-flex flex-column">
+  <div id="vision-board" class="fadable vision-board content-bg bg-opacity-25 rounded d-flex overflow-hidden gap-3 p-2">
+  </div>
+</div>
+<div class="modal fade" id="visionImageModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content bg-black text-white">
+      <div class="modal-header border-0">
+        <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div id="visionImageModalBody" class="modal-body text-center">
+        <img id="visionImage" src="" class="img-fluid rounded shadow">
       </div>
     </div>
+  </div>
 </div>
+</main>
 <div class="marquee pb-1 text-center align-middle fs-5 fw-semibold">
     <div class="pl-2 marquee__item">YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS ·&nbsp;</div>
     <div class="marquee__item">YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS ·&nbsp;</div>

@@ -1,9 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,200..900;1,200..900&family=Share+Tech+Mono&family=Sono:wght@200..800&display=swap');
 :root {
-  --font-size-base: clamp(0.9rem, 1.2vw, 1.25rem);
-  --font-size-small: clamp(0.75rem, 0.95vw, 1rem);
-  --font-size-title: clamp(1rem, 1.8vw, 1.5rem);
-  --font-size-header: clamp(1.25rem, 2vw, 2rem);
+  --font-size-base: clamp(1.1rem, 2vw, 1.8rem);
+  --font-size-small: clamp(1rem, 1.6vw, 1.5rem);
+  --font-size-title: clamp(1.5rem, 2.5vw, 2rem);
+  --font-size-header: clamp(2rem, 3vw, 2.5rem);
 }
 
 body {
@@ -13,16 +13,23 @@ body {
   color: white;
   font-family: "Sono", sans-serif;
 }
+.content-bg {
+  background: 010101;
+  border: 1px solid gray;
+}
 .clock {
   font-family: "Share Tech Mono", monospace;
-  font-size: 22pt;
-  height: 50px;
+  font-size: var(--font-size-title);
 }
-.info-bar {
-  height: 45px;
+#clock {
+  font-size: var(--font-size-header);
+}
+#player {
+  height: 10vh;
+  overflow: scroll;
 }
 .top-bar {
-  height: 200px;
+  height: 13vh;
 }
 .info-bar table {
   height: 100%;
@@ -32,49 +39,52 @@ body {
   width: 50%;
   height: 75px;
 }
-
 .affirmations {
   border-radius: 12px;
   border-collapse: separate; 
   border: 1px solid gray;
-  height: 147px;
+  height: 10vh;
+  width: 100%;
+  overflow: scroll;
+}
+.affirmations table{
+  height: 100%;
   width: 100%;
 }
 
 .affirmations-title {
   font-family: "Sono", sans-serif;
-  font-size: .9rem;
+  font-size: var(--font-size-small);
   text-transform: uppercase;  
   text-decoration: underline;
 }
 
 .affirmations-text {
   font-family: "Crimson Pro", serif;
-  font-size: 1.1rem;
+  font-size: var(--font-size-header);
   letter-spacing: 0.5px;
 }
 .calendar {
-  height: 250px;
-  max-height: 350px;
+  height: 20vh;
   overflow-y: auto;
 }
 .daily-tasks {
-  height: 545px;
+  height: 20vh;
 }
 .morning-routine {
-  height: 275px;
+  height: 12vh;
 }
 .evening-routine {
-  height: 200px;
-}
-.weekly-habits {
-  height: 150px;
+  height: 10vh;
 }
 .daily-habits {
-  height: 150px;
+  height: 9vh;
+}
+.weekly-habits {
+  height: 8vh;
 }
 .vision-board {
-  height: 860px;
+  height: 43vh;
 }
 .marquee {
   display: flex ;
@@ -83,11 +93,12 @@ body {
   width: 100% ;
 }
 .marquee__item {
-  animation-duration: 600s ;
+  animation-duration: 1000s ;
   animation-iteration-count: infinite ;
   animation-name: marquee-content ;
   animation-timing-function: linear ;
   padding: 1pxl;	
+  font-size: var(--font-size-title);
 }
 .marquee:hover .marquee__item {
   animation-play-state: paused ;
@@ -102,24 +113,68 @@ body {
 }
 
 #vision-board {
-  height: 850px;
   position: relative;
   overflow: hidden;
 }
 
 .vision-col {
   flex: 1;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding-bottom: 12px;
+  gap: 12px;
+  align-items: center;
   position: relative;
+  padding-bottom: 1rem;
+}
+
+.vision-col.staggered {
+  transform: translateY(-25%);
+}
+
+.vision-img-container {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 12px;
+  width: 100%;
+}
+
+.vision-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.7;
+  border-radius: 12px;
+  transition: opacity 0.3s ease;
+}
+
+.vision-img:hover {
+  opacity: 1;
+}
+
+.magnify-button {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background-color: rgba(0, 0, 0, 0.0);
+  opacity: 50%;
+  border: none;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  color: white;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+#visionImage {
+  width: 100%;
+  height: auto;
 }
 
 .vision-wrapper {
   display: flex;
   flex-direction: column;
-  animation: scroll-vert 6000s linear infinite;
+  animation: scroll-vert 60000s linear infinite;
 }
 .vision-wrapper img {
   padding-bottom: 12px;
@@ -129,15 +184,8 @@ body {
   animation-direction: reverse;
 }
 
-.vision-img {
-  width: 100%;
-  border-radius: 12px;
-  object-fit: cover;
-  opacity: 50%;
-}
-
-.vision-img:hover {
-  opacity: 100%;
+.vision-col:nth-child(even) {
+  transform: translateY(-20%);
 }
 
 @keyframes scroll-vert {
@@ -150,7 +198,7 @@ body {
 }
 
 #dock .btn {
-  font-size: 1.2rem;
+  font-size: var(--font-size-base);
   padding: 4px 10px;
   border-radius: 8px;
   background-color: black;
@@ -183,7 +231,6 @@ body {
 .card-content-wrapper {
   height: 100%;
   overflow-y: auto; /* only this part scrolls */
-  padding-top: 2rem; /* so the button doesn’t cover the content title */
   height: calc(100% - 2rem); /* adjust if you want tighter spacing */
 }
 
@@ -199,7 +246,7 @@ body {
   transition: opacity 0.2s ease-in-out;
 }
 
-.focus-container:hover .btn-focus {
+.focus-container:hover .btn-focus:hover .magnify-button:hover {
   opacity: 1;
 }
 
@@ -292,12 +339,7 @@ li.text-muted {
 .list-group-item {
   font-size: var(--font-size-small);
 }
-.habit-section .fw-bold,
-.calendar .fw-bold,
-.daily-tasks .fw-bold {
-  font-size: var(--font-size-title);
-}
-#clock {
+.focus-title {
   font-size: var(--font-size-header);
 }
 /* Remove outlines from interactive elements */

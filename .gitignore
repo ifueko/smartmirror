@@ -39,3 +39,6 @@ tests/coverage_html/
 tests/.coverage
 */report/
 */screenshots/
+
+# Ignore vision board images
+mirror/static/mirror/vision/*
