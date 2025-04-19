@@ -24,6 +24,9 @@ body {
 #clock {
   font-size: var(--font-size-header);
 }
+#weather {
+  font-size: var(--font-size-small);
+}
 #player {
   height: 10vh;
   overflow: scroll;
@@ -198,7 +201,7 @@ body {
 }
 
 #dock .btn {
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-small);
   padding: 4px 10px;
   border-radius: 8px;
   background-color: black;
