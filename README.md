@@ -1,4 +1,4 @@
-## Jailbreak instructions
+## Jailbreak instructions for lululemon studio mirror
 https://github.com/olm3ca/mirror
 
 ## Installation
