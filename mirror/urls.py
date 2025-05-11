@@ -11,4 +11,6 @@ urlpatterns = [
     path("habits/update", views.update_habit, name="update_habit"),
     path("tasks/update", views.update_task, name="update_task"),
     path("weather/", views.weather_forecast, name="weather_forecast"),
+    path("voice/", views.voice, name="voice"),
+    path("voice/chat", views.voice_chat, name="voice_chat"),
 ]
