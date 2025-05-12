@@ -41,6 +41,23 @@ def calendar_feed(creds, calendar_ids):
     return events
 
 
+def create_calendar_event(creds, calendar_id, summary, start_iso, end_iso):
+    event = {
+      'summary': f"{summary}",
+      'start': {
+        'dateTime': f"{start_iso}",
+        'timeZone': 'America/New_York',
+      },
+      'end': {
+        'dateTime': f"{end_iso}",
+        'timeZone': 'America/New_York',
+      },
+    }
+    service = build('calendar', 'v3', credentials=creds)
+    event = service.events().insert(calendarId=calendar_id, body=event).execute()
+    print('Event created: %s' % (event.get('htmlLink')))
+
+
 def fetch_habit_group(notion, emoji, db_id):
     response = notion.databases.query(
         **{
@@ -155,12 +172,14 @@ def task_feed(notion, db_id):
             flat_tasks[parent_id]["children"].append(task)
         else:
             root_tasks.append(task)
-
     # 3. Sort children at each level
     def sort_task_tree(tasks):
         def sort_key(t):
+            task_date = t["date"]
+            if isinstance(task_date, datetime.datetime):
+                task_date = task_date.date()
             return (
-                t["date"] or datetime.date.max,
+                task_date or datetime.date.max,
                 t["status_value"],
                 t["priority_value"]
             )

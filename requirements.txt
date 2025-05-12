@@ -8,3 +8,5 @@ notion_client
 python-dateutil
 python-dotenv
 pytz
+uvicorn
+watchfiles

@@ -39,8 +39,32 @@
   <div id="chat-window">
     <div class="chat-bubble bot">Hey there, how can I help?</div>
   </div>
-  <form id="chat-form">
-    <input id="chat-input" class="input-group" />
+  <form id="chat-form" class="input-group mb-3">
+    <!-- Mic button + blinking dot -->
+    <button id="btn-mic" class="btn btn-outline-light" type="button" title="Speak">
+      🎙️
+    </button>
+
+    <!-- Text input -->
+    <input
+      id="chat-input"
+      type="text"
+      class="form-control bg-dark text-white border-secondary"
+      placeholder="Type or speak a message… (check for auto send)"
+      aria-label="Message"
+    />
+
+    <!-- Auto-send switch -->
+    <div class="input-group-text bg-dark border-secondary">
+      <input
+        class="form-check-input m-0"
+        type="checkbox"
+        id="autosend-checkbox"
+        title="Auto-send"
+      />
+    </div>
+
+    <!-- Send button -->
     <button class="btn btn-primary" type="submit">Send</button>
   </form>
 </div>
@@ -50,6 +74,7 @@
 
 </div>
 <script src="{% static 'mirror/js/utils.js' %}"></script>
+<script src="{% static 'mirror/js/speech.js' %}"></script>
 <script src="{% static 'mirror/js/clock.js' %}"></script>
 <script src="{% static 'mirror/js/weather.js' %}"></script>
 <script src="{% static 'mirror/js/voice_chat.js' %}"></script>

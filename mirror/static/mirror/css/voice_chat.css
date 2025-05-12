@@ -46,3 +46,21 @@ button {
  padding: 0.25rem;
  align-self: flex-end;
 } 
+
+#btn-mic {
+  background-color: black !important;
+  color: white !important;
+  border: 2px solid white !important;
+}
+
+#btn-mic.recording {
+  background-color: red !important;
+  color: white !important;
+  border: 2px solid white !important;
+}
+
+#btn-mic:focus,
+#btn-mic:active {
+  box-shadow: none !important;
+  outline: none !important;
+}

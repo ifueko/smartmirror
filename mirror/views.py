@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import json
 import os
@@ -11,13 +12,13 @@ from django.shortcuts import render
 from django.utils.dateparse import parse_date
 from google.oauth2 import service_account
 from notion_client import Client
-from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
-from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie, csrf_exempt
+from django.views.decorators.http import require_POST, require_http_methods
 import pytz
 local_tz = pytz.timezone("America/New_York")  # or whatever your timezone is
 
 from . import database_functions
-
+from .services import get_mcp_service
 
 import logging
 logger = logging.getLogger(__name__)
@@ -78,6 +79,7 @@ def task_feed(request):
     try:
         root_tasks = database_functions.task_feed(notion, database_id)
     except Exception as e:
+        print(e)
         return JsonResponse({"error": str(e)}, status=500)
     return JsonResponse({"tasks": root_tasks})
 
@@ -89,13 +91,51 @@ def dashboard(request):
 def voice(request):
     return render(request, "mirror/voice_chat.html")
 
-def voice_chat(request):
+@csrf_exempt # Keep if you need to bypass CSRF for this API endpoint
+@require_http_methods(["POST"]) # Ensures this view only accepts POST requests
+async def voice_chat(request):
     try:
         data = json.loads(request.body)
         msg = data.get("message", "").strip()
-        return JsonResponse({"response": msg})
-    except:
-        return JsonResponse({"error": str(e)}, status=500)
+
+        if not msg:
+            logger.warning("Voice chat request with empty message.")
+            return JsonResponse({"error": "Message cannot be empty."}, status=400)
+
+        # Get the initialized and connected MCP service
+        mcp_service = await get_mcp_service()
+        
+        logger.info(f"Processing voice chat query: '{msg}'")
+        # The mcp_service.client.session can be checked here if needed for debugging
+        # logger.debug(f"MCP Session state: {mcp_service.client.session}")
+
+        response_text = await mcp_service.process_query(msg)
+        response_text = response_text.split('\n')
+        return JsonResponse({"response": response_text})
+
+    except json.JSONDecodeError:
+        logger.error("Invalid JSON received in voice_chat request.", exc_info=True)
+        return JsonResponse({"error": "Invalid JSON format."}, status=400)
+    except Exception as e:
+        # Log the full exception details for debugging
+        logger.error(f"Error processing voice_chat request: {type(e).__name__}: {e}", exc_info=True)
+        # Provide a generic error message to the client
+        return JsonResponse({"error": f"An internal error occurred: {str(e)}"}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+async def voice_chat2(request):
+    #try:
+        data = json.loads(request.body)
+        msg = data.get("message", "").strip()
+        if not msg:
+            return JsonResponse({"error": str(e)}, status=500)
+        await _ensure_connected()
+        print(mcp_client.session)
+        response = await mcp_client.process_query(msg)
+        return JsonResponse({"response": response})
+    #except Exception as e:
+    #    return JsonResponse({"error": str(e)}, status=500)
 
 def vision_board_feed(request):
     global seed_offset_vision_board
