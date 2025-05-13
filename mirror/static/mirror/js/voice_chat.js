@@ -103,6 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function startASR() {
         if (isRecording) return;
         console.log('Starting ASR...');
+        var content = "";
 
         try {
             localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
@@ -140,14 +141,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = JSON.parse(event.data);
                 console.log('ASR Message:', data);
 
-                if (data.transcript_update) {
-                    // Append incremental updates if desired, or just use full_transcript
-                    // For simplicity, let's assume full_transcript is preferred for continuous update
-                }
-                if (data.full_transcript) { // Assuming your backend sends this
-                    chatInput.value = data.full_transcript;
+                if (data.full_transcript) { 
+                    chatInput.value = content;
+                    content = content + data.full_transcript;
                 } else if (data.transcript_update) { // Fallback if only updates are sent
                     chatInput.value += data.transcript_update; // Or manage accumulation better
+                    content = content + data.transcript_update;
+                    chatInput.value = content;
                 }
                 
                 if (data.error) {

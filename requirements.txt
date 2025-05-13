@@ -11,5 +11,4 @@ python-dotenv
 pytz
 uvicorn
 watchfiles
-speechbrain
 git+https://github.com/openai/whisper.git 

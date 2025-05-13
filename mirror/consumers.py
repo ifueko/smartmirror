@@ -5,104 +5,134 @@ import logging
 import torch
 import torchaudio
 import numpy as np
+import whisper # Make sure you have `pip install openai-whisper`
+
 from channels.generic.websocket import AsyncWebsocketConsumer
-from speechbrain.inference.ASR import StreamingASR, ASRStreamingContext # Corrected import from previous full code
-from speechbrain.utils.dynamic_chunk_training import DynChunkTrainConfig # Corrected import
+# speechbrain imports are no longer needed here unless used elsewhere in your app
+# from speechbrain.inference.ASR import StreamingASR, ASRStreamingContext
+# from speechbrain.utils.dynamic_chunk_training import DynChunkTrainConfig
 
-# --- Global ASR Model Setup (as you had it) ---
-MODEL_SOURCE = "speechbrain/asr-streaming-conformer-librispeech"
-DEVICE = "cpu"
-CHUNK_SIZE_CONFIG = 24
-LEFT_CONTEXT_CHUNKS_CONFIG = 4
-NUM_THREADS = None
+# --- Whisper Model Setup ---
+# Choose your model: "tiny.en", "base.en", "small.en", "medium.en", "large"
+# Using ".en" models is faster if you only need English.
+WHISPER_MODEL_NAME = "turbo" 
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+TARGET_SAMPLE_RATE = 16000  # Whisper expects 16kHz
 
-if NUM_THREADS is not None:
-    torch.set_num_threads(NUM_THREADS)
+# Configuration for chunking and session limits
+MAX_CHUNK_DURATION_S = 3.0  # Process audio in roughly 3-second chunks
+MAX_SESSION_DURATION_S = 30.0
+SILENCE_THRESHOLD_CHUNKS = 2 # Number of consecutive empty transcripts to consider as silence ending speech
 
-# Ensure basicConfig is called only once, preferably at a higher level if possible,
-# or guard it. For now, this is fine if consumers.py is imported once.
-# logging.basicConfig(level=logging.INFO) # This might be getting called multiple times if reloader is active.
-                                        # Consider configuring logging in settings.py or asgi.py for the project.
-logger = logging.getLogger(__name__) # Get a logger specific to this module
+logger = logging.getLogger(__name__)
 
+# Load Whisper model globally when Django starts
 try:
-    logger.info(f"Loading SpeechBrain ASR model from \"{MODEL_SOURCE}\" onto device {DEVICE}")
-    asr_model = StreamingASR.from_hparams(MODEL_SOURCE, run_opts={"device": DEVICE})
-    asr_config = DynChunkTrainConfig(CHUNK_SIZE_CONFIG, LEFT_CONTEXT_CHUNKS_CONFIG)
-    TARGET_SAMPLE_RATE = asr_model.audio_normalizer.sample_rate
-    CHUNK_SIZE_FRAMES = asr_model.get_chunk_size_frames(asr_config)
-    logger.info(f"ASR model loaded. Target SR: {TARGET_SAMPLE_RATE}, Expected chunk frames: {CHUNK_SIZE_FRAMES}")
+    logger.info(f"Loading Whisper ASR model \"{WHISPER_MODEL_NAME}\" onto device \"{DEVICE}\"...")
+    WHISPER_MODEL = whisper.load_model(WHISPER_MODEL_NAME, device=DEVICE)
+    logger.info(f"Whisper model \"{WHISPER_MODEL_NAME}\" loaded successfully.")
 except Exception as e:
-    logger.error(f"Fatal error loading SpeechBrain ASR model: {e}", exc_info=True)
-    asr_model = None
+    logger.error(f"Fatal error loading Whisper model: {e}", exc_info=True)
+    WHISPER_MODEL = None
 
 class ASRConsumer(AsyncWebsocketConsumer):
-    # NO custom __init__ here - let it use the default from parent classes
-
     async def connect(self):
-        logger.info("ASRConsumer.connect method entered.")
-        
-        # --- BEGIN CRITICAL DEBUG LOGS ---
-        logger.info(f"  (connect) self.scope type: {type(self.scope)}")
-        logger.info(f"  (connect) self.scope content: {self.scope}") # Log the entire scope
-        
-        if isinstance(self.scope, dict):
-            logger.info(f"  (connect) 'channel' in self.scope: {'channel' in self.scope}")
-            if 'channel' in self.scope:
-                logger.info(f"  (connect) self.scope['channel'] value: {self.scope['channel']}")
-            else:
-                logger.error("  (connect) CRITICAL: 'channel' key NOT FOUND in self.scope!")
-        else:
-            logger.error("  (connect) CRITICAL: self.scope is not a dictionary or not set!")
-        
-        # Check if channel_name was set by the base Consumer.__call__
-        logger.info(f"  (connect) hasattr(self, 'channel_name') BEFORE accept/problem line: {hasattr(self, 'channel_name')}")
-        if hasattr(self, 'channel_name'):
-            logger.info(f"  (connect) self.channel_name value if it exists: {self.channel_name}")
-        # --- END CRITICAL DEBUG LOGS ---
-
-        if not asr_model:
-            logger.warning("ASR model not loaded. Closing WebSocket connection.")
-            await self.close(code=1011)
+        if not WHISPER_MODEL:
+            logger.warning("Whisper ASR model not loaded. Closing WebSocket connection.")
+            await self.close(code=1011) # Internal error
             return
 
         await self.accept()
-        logger.info("Connection accepted by calling self.accept().")
-
-        self.asr_context = asr_model.make_streaming_context(asr_config)
-        self.waveform_buffer = torch.tensor([], dtype=torch.float32, device=DEVICE)
         self.client_sample_rate = None
-        self.resampler = None
-        self.decoded_text_accumulator = ""
+        self.resampler_to_16k = None
         
-        # This is the line that previously failed (e.g., line 49 or 71 in your file)
-        logger.info(f"Attempting to log WebSocket connected with channel_name...")
-        if hasattr(self, 'channel_name'): # Guarding the access for this debug run
-            logger.info(f"WebSocket connected: {self.channel_name}")
-        else:
-            logger.error("WebSocket connected: BUT self.channel_name IS MISSING! This will cause AttributeError if accessed directly.")
-            # To reproduce the error if it's still missing:
-            # logger.info(f"WebSocket connected (forcing error if missing): {self.channel_name}")
+        self.audio_segment_buffer = bytearray() # Accumulates 16-bit PCM audio for the current segment
+        self.current_segment_duration_s = 0.0 # Duration of audio in audio_segment_buffer
+        self.total_session_duration_s = 0.0   # Total duration of audio processed in this session
+        self.consecutive_empty_transcripts = 0
+
+        logger.info("ASRConsumer (Whisper) connected.")
+        # Log self.channel_name if it's available and you need it, e.g.
+        # if hasattr(self, 'channel_name'):
+        #     logger.info(f"  Channel name: {self.channel_name}")
 
 
     async def disconnect(self, close_code):
-        logger.info(f"ASRConsumer.disconnect method entered. Code: {close_code}")
-        if hasattr(self, 'channel_name'): # Guard access
-            logger.info(f"WebSocket disconnected: {self.channel_name} (Code: {close_code})")
-        else:
-            logger.warning(f"WebSocket disconnected (channel_name was missing at disconnect). Code: {close_code}")
+        logger.info(f"ASRConsumer (Whisper) disconnected. Code: {close_code}")
+        # Transcribe any remaining audio in the buffer before fully disconnecting
+        if self.audio_segment_buffer:
+            logger.info("Transcribing remaining audio on disconnect.")
+            await self.transcribe_and_send(self.audio_segment_buffer, reason="disconnect_flush")
+        
+        # Clean up attributes
+        attributes_to_delete = ['client_sample_rate', 'resampler_to_16k', 
+                                'audio_segment_buffer', 'current_segment_duration_s', 
+                                'total_session_duration_s', 'consecutive_empty_transcripts']
+        for attr in attributes_to_delete:
+            if hasattr(self, attr):
+                delattr(self, attr)
 
-        if hasattr(self, 'asr_context'):
-            del self.asr_context
-        if hasattr(self, 'waveform_buffer'):
-            del self.waveform_buffer
-        if hasattr(self, 'resampler') and self.resampler is not None:
-            del self.resampler
-            
+
+    async def transcribe_and_send(self, pcm_audio_buffer, reason=""):
+        if not pcm_audio_buffer:
+            logger.info(f"Transcription requested ({reason}), but audio buffer is empty.")
+            # For silence detection, we might want to count this.
+            # If the reason is a chunk that just happens to be empty, let the silence counter handle it.
+            return True # Indicate buffer was processed (or was empty)
+
+        logger.info(f"Transcribing segment ({len(pcm_audio_buffer)} bytes) due to: {reason}")
+        
+        # Convert 16-bit PCM bytearray to NumPy float32 array (Whisper prefers this)
+        # Ensure it's normalized to [-1.0, 1.0]
+        audio_np = np.frombuffer(pcm_audio_buffer, dtype=np.int16).astype(np.float32) / 32768.0
+        
+        if audio_np.size == 0:
+            logger.info("Converted audio_np for transcription is empty.")
+            return True # Buffer was processed (empty)
+
+        transcript_text = ""
+        try:
+            if WHISPER_MODEL:
+                # fp16=False if using CPU, can be True if on CUDA and model supports it
+                result = WHISPER_MODEL.transcribe(audio_np, language="en", fp16=(DEVICE=="cuda"))
+                transcript_text = result["text"].strip()
+                logger.info(f"Whisper transcription ({reason}): {transcript_text}")
+                # Send the full transcript of this segment
+                await self.send(text_data=json.dumps({"full_transcript": transcript_text, "reason": reason}))
+            else:
+                logger.error("WHISPER_MODEL not loaded during transcribe_and_send!")
+                await self.send_error("ASR model (Whisper) not available.")
+                return False # Indicate transcription failed
+
+        except Exception as e:
+            logger.error(f"Error during Whisper transcription: {e}", exc_info=True)
+            await self.send_error(f"Transcription error: {str(e)}")
+            return False # Indicate transcription failed
+        
+        # Handle silence detection based on transcript content
+        if not transcript_text: # If transcript is empty
+            self.consecutive_empty_transcripts += 1
+            logger.info(f"Empty transcript, consecutive empty: {self.consecutive_empty_transcripts}")
+            if self.consecutive_empty_transcripts >= SILENCE_THRESHOLD_CHUNKS:
+                logger.info("Silence threshold reached. Ending session.")
+                await self.close_session("silence_timeout")
+                return False # Indicate session should end
+        else:
+            self.consecutive_empty_transcripts = 0 # Reset on non-empty transcript
+        
+        return True # Indicate successful processing of this buffer
+
+
+    async def close_session(self, reason_text):
+        logger.info(f"Closing WebSocket session due to: {reason_text}")
+        await self.send(text_data=json.dumps({"status": "asr_session_ended", "reason": reason_text}))
+        await self.close(code=1000, reason=f"ASR session ended: {reason_text}")
+
+
     async def receive(self, text_data=None, bytes_data=None):
-        # Using your full receive logic from the file you provided
-        if not asr_model:
-            await self.send_error("ASR service not available.")
+        if not WHISPER_MODEL:
+            await self.send_error("ASR service not available (model not loaded).")
+            await self.close(code=1011)
             return
 
         if text_data:
@@ -110,53 +140,108 @@ class ASRConsumer(AsyncWebsocketConsumer):
                 message = json.loads(text_data)
                 if message.get("type") == "audio_config":
                     self.client_sample_rate = int(message.get("sampleRate"))
-                    if self.client_sample_rate and self.client_sample_rate != TARGET_SAMPLE_RATE:
-                        self.resampler = torchaudio.transforms.Resample(
+                    if not self.client_sample_rate:
+                        await self.send_error("Invalid sampleRate received.")
+                        return
+                    
+                    # Initialize resampler if client SR is different from Whisper's target
+                    if self.client_sample_rate != TARGET_SAMPLE_RATE:
+                        self.resampler_to_16k = torchaudio.transforms.Resample(
                             orig_freq=self.client_sample_rate, new_freq=TARGET_SAMPLE_RATE
-                        ).to(DEVICE)
-                        logger.info(f"Client sample rate: {self.client_sample_rate}Hz. Resampler configured.")
+                        )
+                        logger.info(f"Client SR: {self.client_sample_rate}Hz. Resampler to {TARGET_SAMPLE_RATE}kHz configured.")
                     else:
-                        self.resampler = None
-                        logger.info(f"Client sample rate: {self.client_sample_rate}Hz. No resampling needed.")
+                        self.resampler_to_16k = None # No resampling needed
+                        logger.info(f"Client SR: {self.client_sample_rate}Hz. Matches target, no resampling needed.")
                     await self.send(text_data=json.dumps({"status": "config_received"}))
-            except json.JSONDecodeError:
-                logger.warning(f"Received non-JSON text message: {text_data}")
+                # Handle other text messages if needed
             except Exception as e:
                 logger.error(f"Error processing text message: {e}", exc_info=True)
                 await self.send_error(f"Error processing config: {str(e)}")
+            return
 
-        elif bytes_data:
-            if self.client_sample_rate is None:
+        if bytes_data:
+            if not self.client_sample_rate:
                 await self.send_error("Audio config not received. Please send sample rate first.")
                 return
-            try:
-                y = np.frombuffer(bytes_data, dtype=np.float32)
-                y = torch.tensor(y, dtype=torch.float32, device=DEVICE)
-                y_max_abs = torch.max(torch.abs(y))
-                if y_max_abs > 0:
-                    y /= y_max_abs
-                else:
-                    y = torch.zeros_like(y)
-                if len(y.shape) > 1:
-                    y = torch.mean(y, dim=1)
-                if self.resampler:
-                    y = self.resampler(y)
-                self.waveform_buffer = torch.concat((self.waveform_buffer, y))
-                transcribed_for_this_pass = ""
-                while self.waveform_buffer.size(0) >= CHUNK_SIZE_FRAMES:
-                    chunk_to_process = self.waveform_buffer[:CHUNK_SIZE_FRAMES]
-                    self.waveform_buffer = self.waveform_buffer[CHUNK_SIZE_FRAMES:]
-                    chunk_to_process = chunk_to_process.unsqueeze(0)
-                    with torch.no_grad():
-                        transcribed_segments = asr_model.transcribe_chunk(self.asr_context, chunk_to_process)
-                    if transcribed_segments and transcribed_segments[0] is not None:
-                        transcribed_for_this_pass += transcribed_segments[0]
-                if transcribed_for_this_pass:
-                    self.decoded_text_accumulator += transcribed_for_this_pass
-                    await self.send(text_data=json.dumps({"transcript_update": transcribed_for_this_pass, "full_transcript": self.decoded_text_accumulator}))
-            except Exception as e:
-                logger.error(f"Error processing audio_chunk: {e}", exc_info=True)
-                await self.send_error(f"Error processing audio: {str(e)}")
 
+            # 1. Convert received Float32 bytes to NumPy array
+            audio_f32_np = np.frombuffer(bytes_data, dtype=np.float32)
+            
+            # Calculate duration of this incoming chunk (at client's sample rate)
+            # This specific chunk's duration isn't directly used for accumulation logic below,
+            # as accumulation duration is based on resampled audio.
+
+            # 2. Resample to Whisper's target sample rate (16kHz)
+            resampled_audio_f32_np = audio_f32_np
+            if self.resampler_to_16k:
+                audio_f32_tensor = torch.from_numpy(audio_f32_np)
+                resampled_audio_tensor = self.resampler_to_16k(audio_f32_tensor)
+                resampled_audio_f32_np = resampled_audio_tensor.numpy()
+
+            # Calculate duration of the resampled audio chunk
+            duration_of_this_resampled_chunk_s = len(resampled_audio_f32_np) / TARGET_SAMPLE_RATE
+
+            # 3. Convert Float32 to Int16 PCM for accumulation (can also accumulate Float32)
+            # Whisper can take float32, so let's accumulate float32 to avoid quality loss
+            # and convert to 16-bit only if a VAD needed it. Since Whisper takes float32,
+            # we can keep it as float32.
+            # The self.audio_segment_buffer will store resampled float32 audio directly.
+            # For direct concatenation, it's easier if it's a list of numpy arrays, or one growing array.
+            # Let's use a bytearray of float32 bytes for easier extension.
+            
+            # For simplicity in buffer management, let's convert to 16-bit PCM bytes here.
+            # Whisper can handle float32 numpy array directly, which is better quality-wise.
+            # Let's refine: accumulate float32 numpy arrays.
+            
+            # If self.audio_segment_buffer is a list of NumPy arrays:
+            if not hasattr(self, 'audio_segment_parts'): # Initialize if first chunk
+                self.audio_segment_parts = []
+            self.audio_segment_parts.append(resampled_audio_f32_np)
+            self.current_segment_duration_s += duration_of_this_resampled_chunk_s
+            self.total_session_duration_s += duration_of_this_resampled_chunk_s
+
+            # 4. Check max session duration
+            if self.total_session_duration_s >= MAX_SESSION_DURATION_S:
+                logger.info("Max session duration reached.")
+                combined_segment = np.concatenate(self.audio_segment_parts) if self.audio_segment_parts else np.array([], dtype=np.float32)
+                self.audio_segment_parts = [] # Clear parts
+                await self.transcribe_and_send(combined_segment.tobytes(), reason="max_duration_final_chunk") # Convert to bytes for consistency or pass np array
+                await self.close_session("max_duration")
+                return
+
+            # 5. Check if current segment buffer is ready for transcription (e.g., >= 3 seconds)
+            if self.current_segment_duration_s >= MAX_CHUNK_DURATION_S:
+                logger.info(f"Segment duration {self.current_segment_duration_s:.2f}s reached threshold {MAX_CHUNK_DURATION_S}s.")
+                combined_segment_np = np.concatenate(self.audio_segment_parts)
+                
+                # Convert combined float32 numpy array to 16-bit PCM bytes for transcribe_and_send
+                # (Or modify transcribe_and_send to accept float32 numpy array directly)
+                # Let's modify transcribe_and_send to accept float32 numpy array
+                
+                # --- Modifying how transcribe_and_send is called ---
+                # The transcribe_and_send method needs to be updated to expect a float32 numpy array
+                # instead of pcm_audio_buffer (bytes).
+                # For now, I'll keep the conversion here to match the existing transcribe_and_send signature
+                # but ideally, pass audio_np directly.
+                
+                # Let's assume transcribe_and_send is updated to take audio_np (float32)
+                # await self.transcribe_and_send_np(combined_segment_np, reason="chunk_processed")
+                
+                # For now, stick to original plan of converting to 16-bit bytes for transcribe_and_send
+                # Clip to ensure values are in range [-1.0, 1.0] before scaling to int16
+                combined_segment_np_clipped = np.clip(combined_segment_np, -1.0, 1.0)
+                pcm_buffer_for_transcription = (combined_segment_np_clipped * 32767).astype(np.int16).tobytes()
+
+                if not await self.transcribe_and_send(pcm_buffer_for_transcription, reason="chunk_processed"):
+                    # Session was ended by silence detection within transcribe_and_send
+                    self.audio_segment_parts = []
+                    self.current_segment_duration_s = 0.0
+                    return 
+                
+                self.audio_segment_parts = [] # Clear parts buffer after processing
+                self.current_segment_duration_s = 0.0
+            
     async def send_error(self, message):
+        logger.warning(f"Sending error to client: {message}")
         await self.send(text_data=json.dumps({"error": message}))
