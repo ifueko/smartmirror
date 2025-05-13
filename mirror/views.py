@@ -88,6 +88,10 @@ def dashboard(request):
     return render(request, "mirror/dashboard.html")
 
 @ensure_csrf_cookie
+def voice_chrome(request):
+    return render(request, "mirror/voice_chat_chrome.html")
+
+@ensure_csrf_cookie
 def voice(request):
     return render(request, "mirror/voice_chat.html")
 

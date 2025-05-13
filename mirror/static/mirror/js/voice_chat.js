@@ -142,10 +142,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('ASR Message:', data);
 
                 if (data.full_transcript) { 
-                    chatInput.value = content;
                     content = content + data.full_transcript;
+                    chatInput.value = content;
                 } else if (data.transcript_update) { // Fallback if only updates are sent
-                    chatInput.value += data.transcript_update; // Or manage accumulation better
                     content = content + data.transcript_update;
                     chatInput.value = content;
                 }
