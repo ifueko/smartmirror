@@ -15,9 +15,9 @@ class MCPClient:
         self.session: Optional[ClientSession] = None
         self.exit_stack = AsyncExitStack()
         self.genai_client = genai.Client(api_key=os.getenv("GOOGLE_AI_STUDIO_API_KEY"))
-        self.model_id = "gemini-2.0-flash"
         self.model_id = "gemini-1.5-flash"
         self.max_tool_turns = 5
+        self.history: list[types.Content] = []
 
     async def _execute_tool_calls(
         self, function_calls: list[types.FunctionCall],
@@ -109,9 +109,7 @@ class MCPClient:
 
     async def process_query(self, query: str) -> str:
         """Process a query using Gemini and available tools"""
-        contents: list[types.Content] = [
-            types.Content(role="user", parts=[types.Part(text=query)])
-        ]
+        self.history += [types.Content(role="user", parts=[types.Part(text=query)])]
 
         session_tool_list = await self.session.list_tools()
         gemini_tool_config = types.Tool(
@@ -126,7 +124,7 @@ class MCPClient:
         )
         response = await self.genai_client.aio.models.generate_content(
             model=self.model_id,
-            contents=contents,  # Send updated history
+            contents=self.history,  # Send updated history
             config=types.GenerateContentConfig(
                 temperature=1.0,
                 tools=[gemini_tool_config],
@@ -134,7 +132,7 @@ class MCPClient:
         )
         if not response.candidates:
             return response.text
-        contents.append(response.candidates[0].content)
+        self.history.append(response.candidates[0].content)
 
         # --- 3. Tool Calling Loop ---
         turn_count = 0
@@ -155,7 +153,7 @@ class MCPClient:
 
             # --- 3.2 Add Tool Responses to History ---
             # Send back the results for *all* function calls from the previous turn
-            contents.append(
+            self.history.append(
                 types.Content(role="function", parts=tool_response_parts)
             )  # Use "function" role
             print(f"Added {len(tool_response_parts)} tool response part(s) to history.")
@@ -164,7 +162,7 @@ class MCPClient:
             print("Making subsequent API call to Gemini with tool responses...")
             response = await self.genai_client.aio.models.generate_content(
                 model=self.model_id,
-                contents=contents,  # Send updated history
+                contents=self.history,  # Send updated history
                 config=types.GenerateContentConfig(
                     temperature=1.0,
                     tools=[gemini_tool_config],
@@ -177,7 +175,7 @@ class MCPClient:
                 print("Warning: Subsequent model response has no candidates.")
                 break  # Exit loop if no candidates are returned
             latest_content = response.candidates[0].content
-            contents.append(latest_content)
+            self.history.append(latest_content)
             has_function_calls = any(part.function_call for part in latest_content.parts)
             if not has_function_calls:
                 print(
@@ -232,6 +230,6 @@ async def main():
     finally:
         await client.cleanup()
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     import sys
     asyncio.run(main())

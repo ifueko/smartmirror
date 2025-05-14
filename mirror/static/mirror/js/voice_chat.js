@@ -1,6 +1,7 @@
+import { initializeChatUI } from './chat_ui_handler.js'; // Adjust path as needed
 document.addEventListener('DOMContentLoaded', () => {
-    const chatWindow = document.getElementById('chat-window');
     const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
     const chatInput = document.getElementById('chat-input');
     const micBtn = document.getElementById('btn-mic');
     const autosendCheckbox = document.getElementById('autosend-checkbox');
@@ -11,74 +12,45 @@ document.addEventListener('DOMContentLoaded', () => {
         return match ? match[2] : '';
     }
 
-    // ———————— Submit handler (existing code, no changes needed here) ————————
+    async function sendHttpRequest(payload) {
+        const resp = await fetch('chat', { // Assuming 'chat' is your HTTP endpoint
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify(payload)
+        });
+        return await resp.json();
+    }
+
+    const uiHandler = initializeChatUI({
+        sendBackendRequestFn: sendHttpRequest 
+    });
+
+    if (!uiHandler) {
+        console.error("Failed to initialize Chat UI Handler in voice_chat.js");
+        return;
+    }
+
     chatForm.addEventListener('submit', async e => {
         e.preventDefault();
         const text = chatInput.value.trim();
         if (!text) return;
 
-        // user bubble
-        const userBubble = document.createElement('div');
-        userBubble.className = 'chat-bubble user';
-        userBubble.textContent = text;
-        chatWindow.appendChild(userBubble);
-        chatWindow.scrollTop = chatWindow.scrollHeight;
+        uiHandler.addMessageToChat(text, 'user'); // Use UI handler
         chatInput.value = '';
 
         try {
-            const resp = await fetch('chat', { // Assuming 'chat' is your HTTP endpoint for chat logic
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCSRFToken()
-                },
-                body: JSON.stringify({
-                    message: text
-                })
-            });
-            const data = await resp.json();
-            console.log('Chat Response:', data);
-
-            // bot bubble (your existing logic for displaying bot response)
-            if (data.error) {
-                const errorBubble = document.createElement('div');
-                errorBubble.className = 'chat-bubble bot error';
-                errorBubble.textContent = data.error;
-                chatWindow.appendChild(errorBubble);
-            } else if (data.response) {
-                if (Array.isArray(data.response)) {
-                    data.response.forEach(line => {
-                        if (line.trim() === '') return;
-                        const botBubble = document.createElement('div');
-                        botBubble.className = 'chat-bubble bot';
-                        botBubble.textContent = line;
-                        chatWindow.appendChild(botBubble);
-                    });
-                } else if (typeof data.response === 'string') {
-                    if (data.response.trim() === '') return;
-                    const botBubble = document.createElement('div');
-                    botBubble.className = 'chat-bubble bot';
-                    botBubble.textContent = data.response;
-                    chatWindow.appendChild(botBubble);
-                } else {
-                    console.warn("Received data.response in an unexpected format: ", data.response);
-                    // ... (your existing fallback)
-                }
-            } else {
-                 // ... (your existing handling for no response)
-            }
-            chatWindow.scrollTop = chatWindow.scrollHeight;
+            const data = await sendHttpRequest({ message: text });
+            uiHandler.displayServerResponse(data); // Use UI handler
         } catch (err) {
-            console.error('Fetch error:', err);
-            const errorBubble = document.createElement('div');
-            errorBubble.className = 'chat-bubble bot error';
-            errorBubble.textContent = 'Error connecting to chat service.';
-            chatWindow.appendChild(errorBubble);
-            chatWindow.scrollTop = chatWindow.scrollHeight;
+            console.error('Fetch error in voice_chat.js:', err);
+            uiHandler.addMessageToChat('Error connecting to chat service.', 'bot error'); // Use UI handler
         }
     });
 
-    // ———————— NEW WebSocket ASR Service Logic ————————
+
     let socket;
     let audioContext;
     let scriptProcessor;

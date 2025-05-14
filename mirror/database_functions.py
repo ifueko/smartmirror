@@ -3,6 +3,7 @@ import json
 import os
 import random
 from dateutil.parser import parse as parse_date
+from dateutil.parser import isoparse
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import pytz
@@ -12,6 +13,7 @@ PRIORITY_ORDER = {"High": 1, "Medium": 2, "Low": 3}
 STATUS_ORDER = {"Done": 3, "Not started": 1, "In progress": 2}
 
 def calendar_feed(creds, calendar_ids):
+    global task_cache
     # Credentials & Calendar Setup
     service = build('calendar', 'v3', credentials=creds)
     events = []
@@ -208,3 +210,26 @@ def update_task(notion, page_id, new_status):
                 }
             }
         )
+
+def create_calendar_event(creds, calendar_id, summary, start_iso, end_iso, timezone='America/New_York'):
+    service = build('calendar', 'v3', credentials=creds)
+    
+    start_dt = isoparse(start_iso)
+    end_dt = isoparse(end_iso)
+
+    event_body = {
+        'summary': summary,
+        'start': {
+            'dateTime': start_dt.isoformat(),
+            'timeZone': timezone,
+        },
+        'end': {
+            'dateTime': end_dt.isoformat(),
+            'timeZone': timezone,
+        },
+    }
+
+    created_event = service.events().insert(calendarId=calendar_id, body=event_body).execute()
+    print(f"Event created: {created_event.get('htmlLink')}")
+    return created_event
+
