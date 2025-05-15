@@ -1,32 +1,22 @@
-# mirror/consumers.py
 import asyncio
 import json
 import logging
 import torch
 import torchaudio
 import numpy as np
-import whisper # Make sure you have `pip install openai-whisper`
+import whisper
 
 from channels.generic.websocket import AsyncWebsocketConsumer
-# speechbrain imports are no longer needed here unless used elsewhere in your app
-# from speechbrain.inference.ASR import StreamingASR, ASRStreamingContext
-# from speechbrain.utils.dynamic_chunk_training import DynChunkTrainConfig
-
-# --- Whisper Model Setup ---
-# Choose your model: "tiny.en", "base.en", "small.en", "medium.en", "large"
-# Using ".en" models is faster if you only need English.
 WHISPER_MODEL_NAME = "turbo" 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-TARGET_SAMPLE_RATE = 16000  # Whisper expects 16kHz
+TARGET_SAMPLE_RATE = 16000
 
-# Configuration for chunking and session limits
-MAX_CHUNK_DURATION_S = 3.0  # Process audio in roughly 3-second chunks
+MAX_CHUNK_DURATION_S = 3.0
 MAX_SESSION_DURATION_S = 30.0
-SILENCE_THRESHOLD_CHUNKS = 2 # Number of consecutive empty transcripts to consider as silence ending speech
+SILENCE_THRESHOLD_CHUNKS = 2
 
 logger = logging.getLogger(__name__)
 
-# Load Whisper model globally when Django starts
 try:
     logger.info(f"Loading Whisper ASR model \"{WHISPER_MODEL_NAME}\" onto device \"{DEVICE}\"...")
     WHISPER_MODEL = whisper.load_model(WHISPER_MODEL_NAME, device=DEVICE)
@@ -39,27 +29,22 @@ class ASRConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         if not WHISPER_MODEL:
             logger.warning("Whisper ASR model not loaded. Closing WebSocket connection.")
-            await self.close(code=1011) # Internal error
+            await self.close(code=1011)
             return
 
         await self.accept()
         self.client_sample_rate = None
         self.resampler_to_16k = None
         
-        self.audio_segment_buffer = bytearray() # Accumulates 16-bit PCM audio for the current segment
-        self.current_segment_duration_s = 0.0 # Duration of audio in audio_segment_buffer
-        self.total_session_duration_s = 0.0   # Total duration of audio processed in this session
+        self.audio_segment_buffer = bytearray()
+        self.current_segment_duration_s = 0.0
+        self.total_session_duration_s = 0.0
         self.consecutive_empty_transcripts = 0
 
         logger.info("ASRConsumer (Whisper) connected.")
-        # Log self.channel_name if it's available and you need it, e.g.
-        # if hasattr(self, 'channel_name'):
-        #     logger.info(f"  Channel name: {self.channel_name}")
-
 
     async def disconnect(self, close_code):
         logger.info(f"ASRConsumer (Whisper) disconnected. Code: {close_code}")
-        # Transcribe any remaining audio in the buffer before fully disconnecting
         if self.audio_segment_buffer:
             logger.info("Transcribing remaining audio on disconnect.")
             await self.transcribe_and_send(self.audio_segment_buffer, reason="disconnect_flush")
@@ -72,24 +57,15 @@ class ASRConsumer(AsyncWebsocketConsumer):
             if hasattr(self, attr):
                 delattr(self, attr)
 
-
     async def transcribe_and_send(self, pcm_audio_buffer, reason=""):
         if not pcm_audio_buffer:
             logger.info(f"Transcription requested ({reason}), but audio buffer is empty.")
-            # For silence detection, we might want to count this.
-            # If the reason is a chunk that just happens to be empty, let the silence counter handle it.
-            return True # Indicate buffer was processed (or was empty)
-
+            return True
         logger.info(f"Transcribing segment ({len(pcm_audio_buffer)} bytes) due to: {reason}")
-        
-        # Convert 16-bit PCM bytearray to NumPy float32 array (Whisper prefers this)
-        # Ensure it's normalized to [-1.0, 1.0]
         audio_np = np.frombuffer(pcm_audio_buffer, dtype=np.int16).astype(np.float32) / 32768.0
-        
         if audio_np.size == 0:
             logger.info("Converted audio_np for transcription is empty.")
-            return True # Buffer was processed (empty)
-
+            return True
         transcript_text = ""
         try:
             if WHISPER_MODEL:
@@ -109,7 +85,6 @@ class ASRConsumer(AsyncWebsocketConsumer):
             await self.send_error(f"Transcription error: {str(e)}")
             return False # Indicate transcription failed
         
-        # Handle silence detection based on transcript content
         if not transcript_text: # If transcript is empty
             self.consecutive_empty_transcripts += 1
             logger.info(f"Empty transcript, consecutive empty: {self.consecutive_empty_transcripts}")
@@ -210,36 +185,18 @@ class ASRConsumer(AsyncWebsocketConsumer):
                 await self.close_session("max_duration")
                 return
 
-            # 5. Check if current segment buffer is ready for transcription (e.g., >= 3 seconds)
             if self.current_segment_duration_s >= MAX_CHUNK_DURATION_S:
                 logger.info(f"Segment duration {self.current_segment_duration_s:.2f}s reached threshold {MAX_CHUNK_DURATION_S}s.")
                 combined_segment_np = np.concatenate(self.audio_segment_parts)
-                
-                # Convert combined float32 numpy array to 16-bit PCM bytes for transcribe_and_send
-                # (Or modify transcribe_and_send to accept float32 numpy array directly)
-                # Let's modify transcribe_and_send to accept float32 numpy array
-                
-                # --- Modifying how transcribe_and_send is called ---
-                # The transcribe_and_send method needs to be updated to expect a float32 numpy array
-                # instead of pcm_audio_buffer (bytes).
-                # For now, I'll keep the conversion here to match the existing transcribe_and_send signature
-                # but ideally, pass audio_np directly.
-                
-                # Let's assume transcribe_and_send is updated to take audio_np (float32)
-                # await self.transcribe_and_send_np(combined_segment_np, reason="chunk_processed")
-                
-                # For now, stick to original plan of converting to 16-bit bytes for transcribe_and_send
-                # Clip to ensure values are in range [-1.0, 1.0] before scaling to int16
                 combined_segment_np_clipped = np.clip(combined_segment_np, -1.0, 1.0)
                 pcm_buffer_for_transcription = (combined_segment_np_clipped * 32767).astype(np.int16).tobytes()
 
                 if not await self.transcribe_and_send(pcm_buffer_for_transcription, reason="chunk_processed"):
-                    # Session was ended by silence detection within transcribe_and_send
                     self.audio_segment_parts = []
                     self.current_segment_duration_s = 0.0
                     return 
                 
-                self.audio_segment_parts = [] # Clear parts buffer after processing
+                self.audio_segment_parts = []
                 self.current_segment_duration_s = 0.0
             
     async def send_error(self, message):
