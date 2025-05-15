@@ -1,4 +1,5 @@
 import asyncio
+import aiohttp
 import os
 from typing import Optional
 from contextlib import AsyncExitStack
@@ -8,6 +9,9 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
+INTERACTION_SERVICE_URL = os.getenv(
+    "INTERACTION_SERVICE_URL", "http://localhost:8000/api"
+)
 load_dotenv()  # load environment variables from .env
 class MCPClient:
     def __init__(self):
@@ -18,18 +22,30 @@ class MCPClient:
         self.model_id = "gemini-1.5-flash"
         self.max_tool_turns = 5
         self.history: list[types.Content] = []
+        self.interaction_service_url = INTERACTION_SERVICE_URL
+
+    async def send_thought(self, thought):
+        payload_to_service = {"thought": thought}
+        service_url = self.interaction_service_url
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{service_url}/add_thought", json=payload_to_service
+            ) as resp:
+                if resp.status not in [200, 201, 202]:
+                    return False
+            return True
 
     async def _execute_tool_calls(
         self, function_calls: list[types.FunctionCall],
     ) -> list[types.Part]:
         tool_response_parts: list[types.Part] = []
-        print(f"--- Executing {len(function_calls)} tool call(s) ---")
+        await self.send_thought(f"--- Executing {len(function_calls)} tool call(s) ---")
 
         for func_call in function_calls:
             tool_name = func_call.name
             # Ensure args is a dictionary, even if missing or not a dict type
             args = func_call.args if isinstance(func_call.args, dict) else {}
-            print(f"  Attempting to call session tool: '{tool_name}' with args: {args}")
+            await self.send_thought(f"  Attempting to call session tool: '{tool_name}' with args: {args}")
 
             tool_result_payload: dict[str, Any]
             try:
@@ -37,7 +53,7 @@ class MCPClient:
                 # Assumes session.call_tool returns an object with attributes
                 # like `isError` (bool) and `content` (list of Part-like objects).
                 tool_result = await self.session.call_tool(tool_name, args)
-                print(f"  Session tool '{tool_name}' execution finished.")
+                await self.send_thought(f"  Session tool '{tool_name}' execution finished.")
 
                 # Extract result or error message from the tool result object
                 result_text = ""
@@ -54,10 +70,10 @@ class MCPClient:
                         result_text
                         or f"Tool '{tool_name}' failed without specific error message."
                     )
-                    print(f"  Tool '{tool_name}' reported an error: {error_message}")
+                    await self.send_thought(f"  Tool '{tool_name}' reported an error: {error_message}")
                     tool_result_payload = {"error": error_message}
                 else:
-                    print(
+                    await self.send_thought(
                         f"  Tool '{tool_name}' succeeded. Result snippet: {result_text[:150]}..."
                     )  # Log snippet
                     tool_result_payload = {"result": result_text}
@@ -65,7 +81,7 @@ class MCPClient:
             except Exception as e:
                 # Catch exceptions during the tool call itself
                 error_message = f"Tool execution framework failed: {type(e).__name__}: {e}"
-                print(f"  Error executing tool '{tool_name}': {error_message}")
+                await self.send_thought(f"  Error executing tool '{tool_name}': {error_message}")
                 tool_result_payload = {"error": error_message}
 
             # Create a FunctionResponse Part to send back to the model
@@ -74,7 +90,7 @@ class MCPClient:
                     name=tool_name, response=tool_result_payload
                 )
             )
-        print(f"--- Finished executing tool call(s) ---")
+        await self.send_thought(f"--- Finished executing tool call(s) ---")
         return tool_response_parts
 
 
@@ -141,7 +157,7 @@ class MCPClient:
         has_function_calls = any(part.function_call for part in latest_content.parts)
         while has_function_calls and turn_count < self.max_tool_turns:
             turn_count += 1
-            print(f"\n--- Tool Turn {turn_count}/{self.max_tool_turns} ---")
+            await self.send_thought(f"\n--- Tool Turn {turn_count}/{self.max_tool_turns} ---")
 
             # --- 3.1 Execute Pending Function Calls ---
             function_calls_to_execute = [
@@ -156,10 +172,10 @@ class MCPClient:
             self.history.append(
                 types.Content(role="function", parts=tool_response_parts)
             )  # Use "function" role
-            print(f"Added {len(tool_response_parts)} tool response part(s) to history.")
+            await self.send_thought(f"Added {len(tool_response_parts)} tool response part(s) to history.")
 
             # --- 3.3 Make Subsequent Model Call with Tool Responses ---
-            print("Making subsequent API call to Gemini with tool responses...")
+            await self.send_thought("Making subsequent API call to Gemini with tool responses...")
             response = await self.genai_client.aio.models.generate_content(
                 model=self.model_id,
                 contents=self.history,  # Send updated history
@@ -168,30 +184,30 @@ class MCPClient:
                     tools=[gemini_tool_config],
                 ),
             )
-            print("Subsequent response received.")
+            await self.send_thought("Subsequent response received.")
 
             # --- 3.4 Append latest model response and check for more calls ---
             if not response.candidates:
-                print("Warning: Subsequent model response has no candidates.")
+                await self.send_thought("Warning: Subsequent model response has no candidates.")
                 break  # Exit loop if no candidates are returned
             latest_content = response.candidates[0].content
             self.history.append(latest_content)
             has_function_calls = any(part.function_call for part in latest_content.parts)
             if not has_function_calls:
-                print(
+                await self.send_thought(
                     "Model response contains text, no further tool calls requested this turn."
                 )
 
         # --- 4. Loop Termination Check ---
         if turn_count >= self.max_tool_turns and has_function_calls:
-            print(
+            await self.send_thought(
                 f"Maximum tool turns ({self.max_tool_turns}) reached. Exiting loop even though function calls might be pending."
             )
         elif not has_function_calls:
-            print("Tool calling loop finished naturally (model provided text response).")
+            await self.send_thought("Tool calling loop finished naturally (model provided text response).")
 
         # --- 5. Return Final Response ---
-        print("Agent loop finished. Returning final response.")
+        await self.send_thought("Agent loop finished. Returning final response.")
         print(response.candidates)
         print(response.text)
         return response.text

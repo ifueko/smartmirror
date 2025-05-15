@@ -27,7 +27,9 @@ from .services import get_mcp_service
 logger = logging.getLogger(__name__)
 local_tz = pytz.timezone("America/New_York")
 confirmations_db: Dict[str, Dict[str, Any]] = {}
+thoughts_db: List[str] = []
 db_lock = asyncio.Lock()
+thought_db_lock = asyncio.Lock()
 ConfirmationStatusLiteral = Literal["pending", "confirmed", "denied", "timeout", "error", "not_found"]
 StoredConfirmationStatusLiteral = Literal["pending", "confirmed", "denied", "timeout", "error"]
 seed_offset_vision_board = 0
@@ -325,8 +327,19 @@ def update_task(request):
         logger.exception("❌ Exception in update_task")
         return JsonResponse({"error": str(e)}, status=500)
 
+@csrf_exempt
+@require_http_methods(["POST"])
+async def handle_thought(request: HttpRequest):
+    payload = json.loads(request.body)
+    thought = payload.get("thought")
+    if not thought:
+        return JsonResponse({"error": "Need thought to add to thoughts."}, status=400)
+    async with thought_db_lock:
+        thoughts_db.append(thought)
+    print(thoughts_db)
+    return JsonResponse({"thought": thought, "status": "added", "message": "Added thought for UI processing."}, status=202)
 
-@csrf_exempt # mirrordb_server is an external service
+@csrf_exempt
 @require_http_methods(["POST"])
 async def handle_request_confirmation(request: HttpRequest):
     """
@@ -342,13 +355,7 @@ async def handle_request_confirmation(request: HttpRequest):
         if not all([action_id, description]):
             return JsonResponse({"error": "Missing action_id or description"}, status=400)
 
-        # Using async with db_lock in a sync Django view is tricky.
-        # If your Django is fully async, this is fine.
-        # If it's sync, db_lock should be threading.Lock and acquire/release manually.
-        # For now, assuming you might run Django with ASGI and async views are possible.
-        # If not, convert this view to sync and use threading.Lock.
         async with db_lock: # If this view is truly async
-        # with db_lock: # If this view is sync and db_lock is threading.Lock
             if action_id in confirmations_db and confirmations_db[action_id]["status"] != "pending":
                 return JsonResponse({"error": f"Action ID '{action_id}' already processed or conflict."}, status=409)
             
@@ -391,16 +398,22 @@ async def handle_get_confirmation_status(request: HttpRequest, action_id: str):
         "details": item.get("details")
     })
 
-# === Endpoints for your Frontend UI (e.g., voice_chat page script) ===
+# === Endpoints for Frontend UI ===
+
+@require_http_methods(["GET"])
+async def get_pending_thoughts(request: HttpRequest):
+    thoughts = []
+    async with thought_db_lock:
+        for i in range(len(thoughts_db)):
+            item = thoughts_db.pop(0)
+            thoughts.append(item)
+    print(thoughts)
+    return JsonResponse({"thoughts": thoughts})
 
 @require_http_methods(["GET"])
 async def get_pending_ui_confirmations(request: HttpRequest):
-    """
-    Called by your voice_chat page's JavaScript to fetch actions needing UI confirmation.
-    """
     pending_for_ui: List[Dict[str, Any]] = []
     async with db_lock: # If async view
-    # with db_lock: # If sync view
         for action_id, item_data in confirmations_db.items():
             if item_data["status"] == "pending":
                 pending_for_ui.append({
@@ -408,10 +421,9 @@ async def get_pending_ui_confirmations(request: HttpRequest):
                     "description": item_data["description"],
                     "details": item_data.get("details", {})
                 })
-    logger.info(f"[WEB APP VIEW] UI polled for pending confirmations, found: {len(pending_for_ui)}")
     return JsonResponse(pending_for_ui, safe=False) # safe=False for list response
 
-@csrf_exempt # Assuming this might be called via JS without full CSRF token setup easily
+@csrf_exempt
 @require_http_methods(["POST"])
 async def submit_ui_confirmation(request: HttpRequest, action_id: str):
     """

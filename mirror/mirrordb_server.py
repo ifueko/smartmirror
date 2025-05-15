@@ -7,8 +7,8 @@ import asyncio
 import os
 import aiohttp
 
-CONFIRMATION_SERVICE_URL = os.getenv(
-    "CONFIRMATION_SERVICE_URL", "http://localhost:8000/api"
+INTERACTION_SERVICE_URL = os.getenv(
+    "INTERACTION_SERVICE_URL", "http://localhost:8000/api"
 )
 CONFIRMATION_POLLING_INTERVAL = int(os.getenv("CONFIRMATION_POLLING_INTERVAL", "2"))
 CONFIRMATION_TIMEOUT_SECONDS = int(os.getenv("CONFIRMATION_TIMEOUT_SECONDS", "300"))
@@ -24,7 +24,7 @@ async def poll_confirmation(
         "description": description,
         "details": details,
     }
-    service_url = CONFIRMATION_SERVICE_URL
+    service_url = INTERACTION_SERVICE_URL
     poll_interval = CONFIRMATION_POLLING_INTERVAL
     timeout_seconds = CONFIRMATION_TIMEOUT_SECONDS
     async with aiohttp.ClientSession() as session:

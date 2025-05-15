@@ -7,7 +7,7 @@
     {% load static %}
     {% csrf_token %}
     <link href="{% static 'mirror/css/dashboard.css' %}" rel="stylesheet">
-    <link href="{% static 'mirror/css/voice_chat.css' %}" rel="stylesheet">
+    <link href="{% static 'mirror/css/chat.css' %}" rel="stylesheet">
 </head>
 <body data-bs-theme="dark">
 <div class="top-bar mt-2 container-fluid">
@@ -34,6 +34,9 @@
       </div>
     </div>
   </div>
+</div>
+<div id="thought-bubble" class="thought-box d-none">
+  <span id="thought-text">Thinking...</span>
 </div>
 <div class="chat-container">
   <div id="chat-window">
@@ -97,7 +100,6 @@
 <script src="{% static 'mirror/js/speech.js' %}"></script>
 <script src="{% static 'mirror/js/clock.js' %}"></script>
 <script src="{% static 'mirror/js/weather.js' %}"></script>
-<script src="{% static 'mirror/js/chat_handler.js' %}"></script>
 <script src="{% static 'mirror/js/chat.js' %}"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
 </body>
