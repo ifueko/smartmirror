@@ -63,29 +63,10 @@
         title="Auto-send"
       />
     </div>
+
+    <!-- Send button -->
     <button class="btn btn-primary" type="submit">Send</button>
   </form>
-</div>
-<div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true" data-bs-theme="dark">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content bg-dark text-white border-secondary">
-      <div class="modal-header border-secondary">
-        <h5 class="modal-title" id="confirmationModalLabel">Confirm Action</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p id="confirmationMessage">Are you sure?</p>
-        <div id="confirmationDetailsBefore" class="mb-2 small text-muted">
-          </div>
-        <div id="confirmationDetailsAfter" class="mb-2 small text-muted" style="display:none;">
-          </div>
-      </div>
-      <div class="modal-footer border-secondary">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" id="btnConfirmCancel">Cancel</button>
-        <button type="button" class="btn btn-primary" id="btnConfirmAction">Confirm</button>
-      </div>
-    </div>
-  </div>
 </div>
 <div class="marquee pb-1 text-center align-middle fs-5 fw-semibold">
     <div class="pl-2 marquee__item">YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS ·&nbsp;</div>
@@ -93,15 +74,12 @@
 
 </div>
 <script src="{% static 'mirror/js/utils.js' %}"></script>
+<script src="{% static 'mirror/js/speech.js' %}"></script>
 <script src="{% static 'mirror/js/clock.js' %}"></script>
 <script src="{% static 'mirror/js/weather.js' %}"></script>
+<script src="{% static 'mirror/js/chat_ui_handler.js' %}"></script>
+<script src="{% static 'mirror/js/confirmation_handler.js' %}"></script>
+<script src="{% static 'mirror/js/voice_chat.js' %}"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
-<script type="module" src="{% static 'mirror/js/chat_ui_handler.js' %}"></script>
-{% if use_websocket_asr %} {# Example conditional loading #}
-    <script type="module" src="{% static 'mirror/js/voice_chat.js' %}"></script>
-{% else %}
-    <script type="module" src="{% static 'mirror/js/voice_chat_webspeech.js' %}"></script>
-{% endif %}
-
 </body>
 </html>

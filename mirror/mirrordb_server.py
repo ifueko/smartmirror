@@ -8,7 +8,7 @@ import os
 import aiohttp
 
 CONFIRMATION_SERVICE_URL = os.getenv(
-    "CONFIRMATION_SERVICE_URL", "http://localhost:8000"
+    "CONFIRMATION_SERVICE_URL", "http://localhost:8000/api"
 )
 CONFIRMATION_POLLING_INTERVAL = int(os.getenv("CONFIRMATION_POLLING_INTERVAL", "2"))
 CONFIRMATION_TIMEOUT_SECONDS = int(os.getenv("CONFIRMATION_TIMEOUT_SECONDS", "300"))

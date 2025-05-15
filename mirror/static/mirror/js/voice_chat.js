@@ -1,7 +1,5 @@
-import { initializeChatUI } from './chat_ui_handler.js'; // Adjust path as needed
 document.addEventListener('DOMContentLoaded', () => {
     const chatForm = document.getElementById('chat-form');
-    const chatInput = document.getElementById('chat-input');
     const chatInput = document.getElementById('chat-input');
     const micBtn = document.getElementById('btn-mic');
     const autosendCheckbox = document.getElementById('autosend-checkbox');
@@ -12,8 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return match ? match[2] : '';
     }
 
+    // Function to send data to the backend
     async function sendHttpRequest(payload) {
-        const resp = await fetch('chat', { // Assuming 'chat' is your HTTP endpoint
+        const resp = await fetch('chat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -23,185 +22,85 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         return await resp.json();
     }
-
+    
     const uiHandler = initializeChatUI({
-        sendBackendRequestFn: sendHttpRequest 
+        sendBackendRequestFn: sendHttpRequest
     });
 
     if (!uiHandler) {
-        console.error("Failed to initialize Chat UI Handler in voice_chat.js");
+        console.error("Failed to initialize Chat UI Handler in voice_chat_webspeech.js");
         return;
     }
 
+    // Submit handler
     chatForm.addEventListener('submit', async e => {
         e.preventDefault();
         const text = chatInput.value.trim();
         if (!text) return;
 
-        uiHandler.addMessageToChat(text, 'user'); // Use UI handler
+        uiHandler.addMessageToChat(text, 'user');
         chatInput.value = '';
 
         try {
             const data = await sendHttpRequest({ message: text });
-            uiHandler.displayServerResponse(data); // Use UI handler
+            uiHandler.displayServerResponse(data);
         } catch (err) {
-            console.error('Fetch error in voice_chat.js:', err);
-            uiHandler.addMessageToChat('Error connecting to chat service.', 'bot error'); // Use UI handler
+            console.error('Fetch error in voice_chat_webspeech.js:', err);
+            uiHandler.addMessageToChat('Error connecting to chat service.', 'bot error');
         }
     });
+  // ———————— Speech Recognition setup ————————
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    console.error('SpeechRecognition API not supported');
+    micBtn.style.display = 'none';
+    return;
+  }
 
+  const recognizer = new SpeechRecognition();
+  recognizer.lang = 'en-US';
+  recognizer.interimResults = false;
+  recognizer.maxAlternatives = 1;
 
-    let socket;
-    let audioContext;
-    let scriptProcessor;
-    let mediaStreamSource;
-    let localStream;
-    let isRecording = false;
+  let listening = false;
 
-    const ASR_WEBSOCKET_URL = `ws://${window.location.host}/ws/asr/`;
-    const BUFFER_SIZE = 4096; // Audio buffer size for ScriptProcessorNode
+  // toggle recording
+  micBtn.addEventListener('click', () => {
+    if (!listening) recognizer.start();
+    else recognizer.stop();
+  });
 
-    function updateMicButtonUI(recording) {
-        if (recording) {
-            micBtn.classList.add('text-danger', 'recording'); // 'recording' class from your old CSS might make it blink
-            micBtn.title = "Listening… click again to stop";
-        } else {
-            micBtn.classList.remove('text-danger', 'recording');
-            micBtn.title = "Speak your message";
-            micBtn.blur(); // Remove focus
-        }
+  recognizer.onstart = () => {
+    listening = true;
+    micBtn.classList.add('recording');
+  };
+
+  recognizer.onspeechend = () => {
+    recognizer.stop();
+  };
+
+  recognizer.onend = () => {
+    listening = false;
+    micBtn.classList.remove('recording');
+    micBtn.blur();
+  };
+
+  recognizer.onresult = ev => {
+    const transcript = ev.results[0][0].transcript;
+    console.log('🎙️ Recognized:', transcript);
+    chatInput.value = transcript;
+
+    if (autosendCheckbox && autosendCheckbox.checked) {
+      // submit programmatically
+      if (chatForm.requestSubmit) chatForm.requestSubmit();
+      else chatForm.dispatchEvent(new Event('submit', {
+        cancelable: true
+      }));
     }
+  };
 
-    async function startASR() {
-        if (isRecording) return;
-        console.log('Starting ASR...');
-        var content = "";
-
-        try {
-            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-            isRecording = true;
-            updateMicButtonUI(true);
-            chatInput.value = ""; // Clear input field when starting new recording
-
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            mediaStreamSource = audioContext.createMediaStreamSource(localStream);
-            scriptProcessor = audioContext.createScriptProcessor(BUFFER_SIZE, 1, 1); // 1 input channel, 1 output channel
-
-            scriptProcessor.onaudioprocess = (e) => {
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    const inputData = e.inputBuffer.getChannelData(0); // Float32Array
-                    socket.send(inputData.buffer); // Send ArrayBuffer
-                }
-            };
-
-            mediaStreamSource.connect(scriptProcessor);
-            scriptProcessor.connect(audioContext.destination); // Necessary for onaudioprocess to fire
-
-            socket = new WebSocket(ASR_WEBSOCKET_URL);
-
-            socket.onopen = () => {
-                console.log('ASR WebSocket connected.');
-                // Send audio configuration
-                socket.send(JSON.stringify({
-                    type: "audio_config",
-                    sampleRate: audioContext.sampleRate
-                }));
-                console.log(`Sent audio_config with sampleRate: ${audioContext.sampleRate}`);
-            };
-
-            socket.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                console.log('ASR Message:', data);
-
-                if (data.full_transcript) { 
-                    content = content + data.full_transcript;
-                    chatInput.value = content;
-                } else if (data.transcript_update) { // Fallback if only updates are sent
-                    content = content + data.transcript_update;
-                    chatInput.value = content;
-                }
-                
-                if (data.error) {
-                    console.error('ASR Error from server:', data.error);
-                    // Optionally display this error to the user
-                    stopASR(); // Stop on error
-                }
-            };
-
-            socket.onclose = (event) => {
-                console.log('ASR WebSocket closed:', event.reason, `Code: ${event.code}`);
-                if (isRecording) { // Only call stopASR if it wasn't manually stopped
-                    stopASRCleanup();
-                }
-            };
-
-            socket.onerror = (error) => {
-                console.error('ASR WebSocket error:', error);
-                // Optionally display error to user
-                if (isRecording) {
-                     stopASRCleanup(); // Clean up if an error occurs during recording
-                }
-            };
-
-        } catch (err) {
-            console.error('Error starting ASR:', err);
-            alert(`Could not start recording: ${err.message}`); // User feedback
-            isRecording = false;
-            updateMicButtonUI(false);
-        }
-    }
-    
-    function stopASRCleanup() {
-        console.log('Cleaning up ASR resources...');
-        if (scriptProcessor) {
-            scriptProcessor.disconnect();
-            scriptProcessor.onaudioprocess = null; // Remove handler
-            scriptProcessor = null;
-        }
-        if (mediaStreamSource) {
-            mediaStreamSource.disconnect();
-            mediaStreamSource = null;
-        }
-        if (localStream) {
-            localStream.getTracks().forEach(track => track.stop());
-            localStream = null;
-        }
-        if (audioContext && audioContext.state !== 'closed') {
-            audioContext.close().catch(e => console.warn("Error closing audio context:", e));
-            audioContext = null;
-        }
-        isRecording = false;
-        updateMicButtonUI(false);
-
-        // Auto-send if enabled and there's text
-        if (autosendCheckbox && autosendCheckbox.checked && chatInput.value.trim()) {
-            console.log("Autosending transcript...");
-            if (chatForm.requestSubmit) chatForm.requestSubmit();
-            else chatForm.dispatchEvent(new Event('submit', { cancelable: true }));
-        }
-    }
-
-    function stopASR() {
-        if (!isRecording) return;
-        console.log('Stopping ASR...');
-        if (socket && socket.readyState === WebSocket.OPEN) {
-            // Optionally send an "end_of_stream" message if your backend expects it
-            // socket.send(JSON.stringify({ type: "end_stream" }));
-            socket.close(1000, "Client stopped recording"); // Graceful close
-        }
-        // stopASRCleanup will be called by socket.onclose or directly if socket never opened/errored
-        // However, if the socket is already closed or never opened, we need to ensure cleanup happens.
-        if (!socket || socket.readyState !== WebSocket.OPEN) {
-            stopASRCleanup();
-        }
-        // If socket was open, socket.onclose will trigger stopASRCleanup.
-    }
-
-    micBtn.addEventListener('click', () => {
-        if (!isRecording) {
-            startASR();
-        } else {
-            stopASR();
-        }
-    });
+  recognizer.onerror = e => {
+    console.error('SpeechRecognition error:', e.error);
+    recognizer.stop();
+  };
 });

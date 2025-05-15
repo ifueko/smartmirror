@@ -1,13 +1,9 @@
 function initializeChatUI({
     chatWindowId = 'chat-window',
-    // chatFormId = 'chat-form', // The form submission itself might differ slightly or be handled by the specific ASR script
-    // chatInputId = 'chat-input',
     confirmationModalId = 'confirmationModal',
-    // Elements within the modal
-    confirmationMessageId = 'confirmationMessage',
-    btnConfirmActionId = 'btnConfirmAction',
-    btnConfirmCancelId = 'btnConfirmCancel',
-    // Function to send data to the backend (will be provided by voice_chat.js or voice_chat_webspeech.js)
+    confirmationMessageId = 'confirmationDetails',
+    btnConfirmActionId = 'confirmConfirmationBtn',
+    btnConfirmCancelId = 'denyConfirmationBtn',
     sendBackendRequestFn 
 }) {
 
