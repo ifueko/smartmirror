@@ -198,7 +198,7 @@ async def voice_chat(request):
 
             except json.JSONDecodeError:
                 # It's a natural language response from Gemini, not a direct JSON from our tools.
-                response_lines = response_text_from_gemini_or_tool.split('\n')
+                response_lines = [r.strip() for r in response_text_from_gemini_or_tool.strip().split('\n') if len(r.strip()) > 0]
                 return JsonResponse({"response": response_lines})
             except Exception as e:
                  logger.error(f"Error processing Gemini's response in voice_chat: {type(e).__name__}: {e}", exc_info=True)

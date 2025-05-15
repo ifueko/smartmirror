@@ -35,14 +35,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   recognizer.addEventListener('start', () => {
     listening = true;
-    micBtn.classList.add('text-danger');
-    micBtn.title = "Listening… click again to stop";
+    micBtn.classList.add('recording');
   });
 
   recognizer.addEventListener('end', () => {
     listening = false;
-    micBtn.classList.remove('text-danger');
-    micBtn.title = "Speak your message";
+    micBtn.classList.remove('recording');
   });
 
   recognizer.addEventListener('result', (ev) => {
@@ -50,7 +48,5 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('🎙️ Recognized:', transcript);
     const input = document.getElementById('chat-input');
     input.value = transcript;
-    // auto-submit:
-    //document.getElementById('chat-form').dispatchEvent(new Event('submit', { cancelable: true }));
   });
 });
