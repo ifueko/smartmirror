@@ -15,7 +15,7 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
 
 from mirror.services import MCPService
-import mirror.routing
+import ml_models.routing
 
 logger = logging.getLogger(__name__)
 
@@ -50,18 +50,18 @@ async def lifespan_handler(scope, receive, send):
                 await send({'type': 'lifespan.shutdown.failed', 'message': str(e)})
             return
 
-# Get WebSocket URL patterns directly from mirror.routing
-# Ensure mirror.routing defines a list named 'websocket_urlpatterns'
-websocket_routes = getattr(mirror.routing, 'websocket_urlpatterns', [])
+# Get WebSocket URL patterns directly from ml_modelsrouting
+# Ensure ml_models.routing defines a list named 'websocket_urlpatterns'
+websocket_routes = getattr(ml_models.routing, 'websocket_urlpatterns', [])
 
 if not websocket_routes:
-    logger.warning("No WebSocket URL patterns found in mirror.routing. WebSockets may not be handled.")
+    logger.warning("No WebSocket URL patterns found in ml_models.routing. WebSockets may not be handled.")
 
 application = ProtocolTypeRouter({
     "http": django_asgi_app,
     "websocket": AuthMiddlewareStack(
         URLRouter(
-            websocket_routes  # Use the routes from mirror.routing directly
+            websocket_routes  # Use the routes from ml_models.routing directly
         )
     ),
     "lifespan": lifespan_handler,

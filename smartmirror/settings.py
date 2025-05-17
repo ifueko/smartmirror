@@ -44,8 +44,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'mirror',
     'channels',
+    'mirror',
+    'ml_models',
 ]
 
 MIDDLEWARE = [

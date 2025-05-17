@@ -12,10 +12,9 @@ from google.genai import types
 INTERACTION_SERVICE_URL = os.getenv(
     "INTERACTION_SERVICE_URL", "http://localhost:8000/api"
 )
-load_dotenv()  # load environment variables from .env
+load_dotenv()
 class MCPClient:
     def __init__(self):
-        # Initialize session and client objects
         self.session: Optional[ClientSession] = None
         self.exit_stack = AsyncExitStack()
         self.genai_client = genai.Client(api_key=os.getenv("GOOGLE_AI_STUDIO_API_KEY"))
@@ -39,49 +38,41 @@ class MCPClient:
         self, function_calls: list[types.FunctionCall],
     ) -> list[types.Part]:
         tool_response_parts: list[types.Part] = []
-        await self.send_thought(f"--- Executing {len(function_calls)} tool call(s) ---")
+        await self.send_thought(f"Executing {len(function_calls)} tool call{'s' if len(function_calls) > 1 else ''}...")
 
         for func_call in function_calls:
             tool_name = func_call.name
-            # Ensure args is a dictionary, even if missing or not a dict type
             args = func_call.args if isinstance(func_call.args, dict) else {}
-            await self.send_thought(f"  Attempting to call session tool: '{tool_name}' with args: {args}")
+            await self.send_thought(f"Attempting to call '{tool_name}' with args '{args}'")
 
             tool_result_payload: dict[str, Any]
             try:
-                # Execute the tool using the provided session object
-                # Assumes session.call_tool returns an object with attributes
-                # like `isError` (bool) and `content` (list of Part-like objects).
                 tool_result = await self.session.call_tool(tool_name, args)
                 await self.send_thought(f"  Session tool '{tool_name}' execution finished.")
-
-                # Extract result or error message from the tool result object
                 result_text = ""
-                # Check structure carefully based on actual `session.call_tool` return type
                 if (
                     hasattr(tool_result, "content")
                     and tool_result.content
                     and hasattr(tool_result.content[0], "text")
                 ):
                     result_text = tool_result.content[0].text or ""
-
                 if hasattr(tool_result, "isError") and tool_result.isError:
                     error_message = (
                         result_text
                         or f"Tool '{tool_name}' failed without specific error message."
                     )
-                    await self.send_thought(f"  Tool '{tool_name}' reported an error: {error_message}")
+                    await self.send_thought(f"Tool '{tool_name}' reported an error: {error_message}")
                     tool_result_payload = {"error": error_message}
                 else:
                     await self.send_thought(
-                        f"  Tool '{tool_name}' succeeded. Result snippet: {result_text[:150]}..."
+                        f"Tool '{tool_name}' succeeded. Result snippet: {result_text[:15]}..."
                     )  # Log snippet
                     tool_result_payload = {"result": result_text}
 
             except Exception as e:
                 # Catch exceptions during the tool call itself
                 error_message = f"Tool execution framework failed: {type(e).__name__}: {e}"
-                await self.send_thought(f"  Error executing tool '{tool_name}': {error_message}")
+                await self.send_thought(f"Error executing tool '{tool_name}': {error_message}")
                 tool_result_payload = {"error": error_message}
 
             # Create a FunctionResponse Part to send back to the model
@@ -90,7 +81,7 @@ class MCPClient:
                     name=tool_name, response=tool_result_payload
                 )
             )
-        await self.send_thought(f"--- Finished executing tool call(s) ---")
+        await self.send_thought(f"Finished executing tool call{'s' if len(function_calls)>1 else ''}.")
         return tool_response_parts
 
 
@@ -213,7 +204,7 @@ class MCPClient:
         return response.text
 
     async def chat_loop(self):
-        """Run an interactive chat loop"""
+        """Run an interactive chat loop. For testing at the command line."""
         print("\nMCP Client Started!")
         print("Type your queries or 'quit' to exit.")
         
@@ -238,14 +229,12 @@ async def main():
     if len(sys.argv) < 2:
         print("Usage: python client.py <path_to_server_script>")
         sys.exit(1)
-        
     client = MCPClient()
     try:
         await client.connect_to_server(sys.argv[1])
         await client.chat_loop()
     finally:
         await client.cleanup()
-
 if __name__ == '__main__':
     import sys
     asyncio.run(main())
