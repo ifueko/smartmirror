@@ -1,29 +1,26 @@
-// mirror/static/mirror/js/speech.js
-
 document.addEventListener('DOMContentLoaded', () => {
-  // Elements
-  const micBtn      = document.getElementById('btn-mic');      // 🎙️ button
-  const inputField  = document.getElementById('chat-input');   // your chat <input>
-  const sendBtn     = document.getElementById('send-btn');     // your “Send” button
-  const chatForm    = document.getElementById('chat-form');    // your chat <form>
-  const autosendChk = document.getElementById('autosend');     // optional auto-send <input type="checkbox">
+  // UI elements
+  const micBtn      = document.getElementById('btn-mic');
+  const inputField  = document.getElementById('chat-input');
+  const sendBtn     = document.getElementById('send-btn');
+  const chatForm    = document.getElementById('chat-form');
+  const autosendChk = document.getElementById('autosend');
 
-  // State
-  let audioContext, processor, sourceNode, socket;
+  // State holders
+  let audioContext, processor, sourceNode, mediaStream, socket;
   let listening = false;
 
   micBtn.addEventListener('click', async () => {
     if (!listening) {
       // —— START RECORDING ——
-      // 1) get mic
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioContext = new AudioContext();
       processor    = audioContext.createScriptProcessor(4096, 1, 1);
-      sourceNode   = audioContext.createMediaStreamSource(stream);
+      sourceNode   = audioContext.createMediaStreamSource(mediaStream);
       sourceNode.connect(processor);
       processor.connect(audioContext.destination);
 
-      // 2) open websocket
+      // Open ASR WebSocket
       socket = new WebSocket(
         (location.protocol === 'https:' ? 'wss://' : 'ws://') +
         location.host +
@@ -31,8 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
       );
       socket.binaryType = 'arraybuffer';
       socket.onopen = () => {
-        console.log('WebSocket open');
-        // send sample rate config
         socket.send(JSON.stringify({
           type:       'audio_config',
           sampleRate: audioContext.sampleRate
@@ -42,14 +37,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const msg = JSON.parse(ev.data);
         if (msg.type === 'transcript') {
           const t = msg.transcript.trim();
-          // append instead of overwrite:
-          if (inputField.value) {
-            inputField.value = inputField.value.trim() + ' ' + t;
-          } else {
-            inputField.value = t;
-          }
+          // append or set
+          inputField.value = inputField.value
+            ? inputField.value.trim() + ' ' + t
+            : t;
           inputField.dispatchEvent(new Event('input', { bubbles: true }));
-          // auto-send if checked
           if (autosendChk?.checked) {
             if (sendBtn) sendBtn.click();
             else if (chatForm) chatForm.submit();
@@ -61,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
       socket.onerror = e => console.error('WebSocket error', e);
       socket.onclose = e => console.log('WebSocket closed', e.code);
 
-      // 3) stream audio chunks
+      // Stream PCM chunks
       processor.onaudioprocess = e => {
         const floatData = e.inputBuffer.getChannelData(0);
         const int16     = new Int16Array(floatData.length);
@@ -74,14 +66,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
       listening = true;
       micBtn.classList.add('recording');
+
     } else {
       // —— STOP RECORDING ——
       processor.disconnect();
       sourceNode.disconnect();
       await audioContext.close();
 
-      // signal end of stream
+      // **Stop all mic tracks** so the browser releases the mic
+      mediaStream.getTracks().forEach(track => track.stop());
+
+      // Tell server we're done
       socket.send(JSON.stringify({ type: 'end_stream' }));
+
       listening = false;
       micBtn.classList.remove('recording');
     }
