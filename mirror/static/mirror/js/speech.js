@@ -61,7 +61,12 @@ document.addEventListener('DOMContentLoaded', () => {
           let s = Math.max(-1, Math.min(1, floatData[i]));
           int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
         }
-        socket.send(int16.buffer);
+        try {
+            socket.send(int16.buffer);
+        } catch (error) {
+            console.log("Process chunk error, probably stopped");
+            console.log(error);
+        }
       };
 
       listening = true;
@@ -77,7 +82,12 @@ document.addEventListener('DOMContentLoaded', () => {
       mediaStream.getTracks().forEach(track => track.stop());
 
       // Tell server we're done
-      socket.send(JSON.stringify({ type: 'end_stream' }));
+        try {
+            socket.send(JSON.stringify({ type: 'end_stream' }));
+        } catch (error) {
+            console.log("Process chunk error, probably stopped");
+            console.log(error);
+        }
 
       listening = false;
       micBtn.classList.remove('recording');
