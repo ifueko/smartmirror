@@ -346,7 +346,7 @@ def confirm(
 @confirm(
     description_template="Mark as {}.",
     cache_key="habits",
-    id_param_name="id_",
+    id_param_name="habit_id",
     info_param_names=["done"],
 )
 async def update_habit_status(habit_id: str, done: bool):
