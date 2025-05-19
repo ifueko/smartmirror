@@ -166,6 +166,7 @@ async def get_tasks(on_or_before_date=None):
     task_counter = 1
     for task_data in notion_tasks:
         project_task_id = str(task_counter)
+        task_data["task_id"] = project_task_id
         flattened_tasks[project_task_id] = task_data
         task_counter += 1
         if "children" in task_data:
@@ -215,6 +216,7 @@ async def get_habits():
         habit_group = fetch_habit_group(notion, emoji, NOTION_HABIT_DB)
         for habit in habit_group:
             habit["timeofday"] = f"{emoji} {time}"
+            habit["habit_id"] = str(count)
             habits[str(count)] = habit
             count += 1
     cache["habits"] = habits
@@ -347,9 +349,9 @@ def confirm(
     id_param_name="id_",
     info_param_names=["done"],
 )
-async def update_habit_status(id_: str, done: bool):
+async def update_habit_status(habit_id: str, done: bool):
     global cache
-    habit = cache["habits"][id_]
+    habit = cache["habits"][habit_id]
     page_id = habit["id"]
     prop = habit["property"]
     notion = Client(auth=NOTION_API_KEY)
