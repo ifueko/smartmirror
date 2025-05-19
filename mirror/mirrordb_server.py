@@ -531,19 +531,19 @@ async def update_task(
 
 
 @mcp.tool(
-    description="Creates a new event in the user's calendar, starting and ending at the specified ISO Datetimes."
+    description="Creates a new event with description, starting and ending at the specified ISO Datetimes."
 )
 @confirm(
     description_template="Create new event: {} from {} to {}. Returns the full updated calendar.",
-    info_param_names=["name", "start_iso", "end_iso"],
+    info_param_names=["description", "start_iso", "end_iso"],
 )
-async def create_event(name: str, start_iso: str, end_iso: str):
+async def create_event(description: str, start_iso: str, end_iso: str):
     global cache
     creds = service_account.Credentials.from_service_account_file(
         CREDS_PATH, scopes=SCOPES_EVENTS
     )
     calendar_id = GOOGLE_EVENT_CALENDAR_ID
-    event = create_calendar_event(creds, calendar_id, name, start_iso, end_iso)
+    event = create_calendar_event(creds, calendar_id, description, start_iso, end_iso)
     assert event.get("htmlLink"), "Could not create event."
     events = await get_events()
     return json.dumps({
