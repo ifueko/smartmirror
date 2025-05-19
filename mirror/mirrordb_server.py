@@ -318,13 +318,13 @@ def confirm(
     return decorator
 
 
+@mcp.tool()
 @confirm(
     description_template="Mark as {}.",
     cache_key="habits",
     id_param_name="id_",
     info_param_names=["done"],
 )
-@mcp.tool()
 async def update_habit_status(id_: str, done: bool):
     global cache
     habit = cache["habits"][id_]
@@ -340,13 +340,13 @@ async def update_habit_status(id_: str, done: bool):
     }
 
 
-@confirm(
-    description_template="Create new project or task: {} due {} priority {}",
-    info_param_names=["title", "due_date_iso", "priority"],
-)
 @mcp.tool(
     name="create_project_or_task_standalone",
     description="Creates a new entry in the task database. Can be a project task, or standalone task with no subtasks. Project tasks are identical to standalone tasks, but often have subtasks.",
+)
+@confirm(
+    description_template="Create new project or task: {} due {} priority {}",
+    info_param_names=["title", "due_date_iso", "priority"],
 )
 async def create_project_or_task_standalone(
     title: str,
@@ -372,13 +372,13 @@ async def create_project_or_task_standalone(
         )
 
 
-@confirm(
-    description_template="Create new child task: {} under project with id: {} with due date {}, status {}, priority {}",
-    info_param_names=["child_title", "project_id", "due_date_iso", "status", "priority"],
-)
 @mcp.tool(
     name="create_subtask_with_project_id",
     description="Creates a new subtask under an existing project task.",
+)
+@confirm(
+    description_template="Create new child task: {} under project with id: {} with due date {}, status {}, priority {}",
+    info_param_names=["child_title", "project_id", "due_date_iso", "status", "priority"],
 )
 async def create_subtask_with_project_id(
     project_id: str,
@@ -413,6 +413,7 @@ async def create_subtask_with_project_id(
         )
 
 
+@mcp.tool()
 @confirm(
     description_template="Create new project: {} with child task: {} project due date {} child due date {} project priority {} child priprity {}",
     info_param_names=[
@@ -426,7 +427,6 @@ async def create_subtask_with_project_id(
         "child_status",
     ],
 )
-@mcp.tool()
 async def create_new_project_with_subtask(
     project_title: str,
     child_title: str,
@@ -462,11 +462,11 @@ async def create_new_project_with_subtask(
             default=str,
         )
 
+@mcp.tool()
 @confirm(
     description_template="Update task: id {}; params: {} {} {} {}",
     info_param_names=["task_id", "title", "due_date_iso", "status", "priority"],
 )
-@mcp.tool()
 async def update_task(
     task_id: str,
     title: str = None,
@@ -502,11 +502,11 @@ async def update_task(
         )
 
 
+@mcp.tool()
 @confirm(
     description_template="Create new event: {} from {} to {}. Returns the full updated calendar.",
     info_param_names=["name", "start_iso", "end_iso"],
 )
-@mcp.tool()
 async def create_event(name: str, start_iso: str, end_iso: str):
     global cache
     creds = service_account.Credentials.from_service_account_file(
@@ -524,11 +524,11 @@ async def create_event(name: str, start_iso: str, end_iso: str):
     }, default=str)
 
 
+@mcp.tool()
 @confirm(
     description_template="Delete event with cache ID: {}",
     info_param_names=["cache_id"],
 )
-@mcp.tool()
 async def delete_event(cache_id: str):
     """Deletes a Google Calendar event based on its local cache ID."""
     global cache
@@ -614,11 +614,11 @@ def update_google_calendar_event(
     return updated_event
 
 
+@mcp.tool()
 @confirm(
     description_template="Update event id: {}",
     info_param_names=["event_id"],
 )
-@mcp.tool()
 async def update_event(
     event_id: str,
     name: str = None,
