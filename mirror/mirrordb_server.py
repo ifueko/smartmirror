@@ -262,7 +262,9 @@ async def get_events(start_date=None, end_date=None):
     calendar_ids = GOOGLE_CALENDAR_IDS
     count = 0
     events = get_google_calendar_events(creds, calendar_ids, start_date, end_date)
-    cache["events"] = {i: e for i, e in enumerate(events)}
+    for i, e in enumerate(events):
+        e['event_id'] = i
+        cache["events"][i] = e
     events = clean_events(cache["events"])
     return {
         "function_called": "get_events",
@@ -559,17 +561,17 @@ async def create_event(description: str, start_iso: str, end_iso: str):
 )
 @confirm(
     description_template="Delete event with cache ID: {}",
-    info_param_names=["cache_id"],
+    info_param_names=["id"],
 )
-async def delete_event(cache_id: str):
+async def delete_event(event_id: str):
     """Deletes a Google Calendar event based on its local cache ID."""
     global cache
-    event_data = cache["events"].get(cache_id)
+    event_data = cache["events"].get(event_id)
     if not event_data or not event_data.get("id"):
         return json.dumps(
             {
                 "status": "Failed",
-                "error": f"Event with cache ID '{cache_id}' not found or has no Google ID.",
+                "error": f"Event with cache ID '{event_id}' not found or has no Google ID.",
             },
             default=str,
         )
@@ -587,7 +589,7 @@ async def delete_event(cache_id: str):
         return {
             "function_called": "delete_event",
             "status": "Success",
-            "deleted_cache_id": cache_id,
+            "deleted_event_id": event_id,
             "events": events
         }
     except Exception as e:

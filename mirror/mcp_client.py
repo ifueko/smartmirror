@@ -19,7 +19,6 @@ class MCPClient:
         self.exit_stack = AsyncExitStack()
         self.genai_client = genai.Client(api_key=os.getenv("GOOGLE_AI_STUDIO_API_KEY"))
         self.model_id = "gemini-1.5-flash"
-        self.max_tool_turns = 5
         self.history: list[types.Content] = []
         self.interaction_service_url = INTERACTION_SERVICE_URL
         self.fake = fake
@@ -150,9 +149,9 @@ class MCPClient:
         # Check specifically for FunctionCall objects in the latest response part
         latest_content = response.candidates[0].content
         has_function_calls = any(part.function_call for part in latest_content.parts)
-        while has_function_calls and turn_count < self.max_tool_turns:
+        while has_function_calls:
             turn_count += 1
-            await self.send_thought(f"\n--- Tool Turn {turn_count}/{self.max_tool_turns} ---")
+            await self.send_thought(f"\n--- Tool Turn #{turn_count} ---")
 
             # --- 3.1 Execute Pending Function Calls ---
             function_calls_to_execute = [
@@ -194,11 +193,7 @@ class MCPClient:
                 )
 
         # --- 4. Loop Termination Check ---
-        if turn_count >= self.max_tool_turns and has_function_calls:
-            await self.send_thought(
-                f"Maximum tool turns ({self.max_tool_turns}) reached. Exiting loop even though function calls might be pending."
-            )
-        elif not has_function_calls:
+        if not has_function_calls:
             await self.send_thought("Tool calling loop finished naturally (model provided text response).")
 
         # --- 5. Return Final Response ---
