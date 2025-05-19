@@ -436,7 +436,7 @@ async def create_subtask_with_project_id(
 
 
 @mcp.tool(
-    description_template="Create new project with child task and additional details (due dates, priorities, completion statuses)",
+    description="Create new project with child task and additional details (due dates, priorities, completion statuses)",
 )
 @confirm(
     description_template="Create new project: {} with child task: {} project due date {} child due date {} project priority {} child priority {}",
