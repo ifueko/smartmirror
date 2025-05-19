@@ -73,7 +73,6 @@ cache = {
     "events": {},
     "tasks": {},
 }
-mcp = FastMCP("SmartMirror BackendDB FastMCP")
 
 
 def parse_url(url):
@@ -126,23 +125,33 @@ def get_now():
     now_str = now.isoformat()
     return now_str
 
+mcp = FastMCP("SmartMirror BackendDB FastMCP")
 
-@mcp.tool()
+@mcp.tool(
+    description="Gets the user's local time zone."
+)
 async def get_time_zone() -> dict:
     return "America/New_York"
 
 
-@mcp.tool()
+@mcp.tool(
+    description="Gets the current date and time in the user's local time zone."
+)
 async def get_current_datetime() -> dict:
     return get_now()
 
 
-@mcp.tool()
+@mcp.tool(
+    description="Returns any tasks that are not complete (or have subtasks that are) not complete on or before the specified date."
+)
 async def tasks_on_or_before(on_or_before_date: str):
     return await get_tasks(on_or_before_date)
 
 
-@mcp.tool()
+@mcp.tool(
+    name="get_active_tasks",
+    description="Returns active tasks, defined as tasks that are (or have subtasks that are) not complete and due on or before the current date."
+)
 async def current_tasks():
     return await get_tasks()
 
@@ -191,7 +200,10 @@ def clean_dict(dict_, ignore_keys):
     return clean_dict
 
 
-@mcp.tool()
+@mcp.tool(
+    name="get_daily_habits",
+    description="Returns the completion status of habits for today's date.",
+)
 async def get_habits():
     global cache
     habits = {}
@@ -202,24 +214,32 @@ async def get_habits():
     ):
         habit_group = fetch_habit_group(notion, emoji, NOTION_HABIT_DB)
         for habit in habit_group:
+            habit["timeofday"] = f"{emoji} {time}"
             habits[str(count)] = habit
             count += 1
     cache["habits"] = habits
     return json.dumps(clean_habits(habits))
 
 
-@mcp.tool()
+@mcp.tool(
+    description="Returns the user's calendar events occuring on the specified date."
+)
 async def events_on(date):
     events = await get_events(date)
     return events
 
 
-@mcp.tool()
+@mcp.tool(
+    description="Returns the user's calendar events starting and ending between the specified dates.",
+)
 async def events_between(start_date, end_date):
     return await get_events(start_date, end_date)
 
 
-@mcp.tool()
+@mcp.tool(
+    name="get_todays_events",
+    description="Returns the user's calendar events for today's date.",
+)
 async def todays_events():
     return await get_events()
 
@@ -318,7 +338,9 @@ def confirm(
     return decorator
 
 
-@mcp.tool()
+@mcp.tool(
+    description="Updates the current day's completion status of the habit with the specified dict id",
+)
 @confirm(
     description_template="Mark as {}.",
     cache_key="habits",
@@ -413,9 +435,11 @@ async def create_subtask_with_project_id(
         )
 
 
-@mcp.tool()
+@mcp.tool(
+    description_template="Create new project with child task and additional details (due dates, priorities, completion statuses)",
+)
 @confirm(
-    description_template="Create new project: {} with child task: {} project due date {} child due date {} project priority {} child priprity {}",
+    description_template="Create new project: {} with child task: {} project due date {} child due date {} project priority {} child priority {}",
     info_param_names=[
         "project_title",
         "child_title",
@@ -462,7 +486,9 @@ async def create_new_project_with_subtask(
             default=str,
         )
 
-@mcp.tool()
+@mcp.tool(
+    description="Updates one or more details of the task with the sepcified id."
+)
 @confirm(
     description_template="Update task: id {}; params: {} {} {} {}",
     info_param_names=["task_id", "title", "due_date_iso", "status", "priority"],
@@ -502,7 +528,9 @@ async def update_task(
         )
 
 
-@mcp.tool()
+@mcp.tool(
+    description="Creates a new event in the user's calendar, starting and ending at the specified ISO Datetimes."
+)
 @confirm(
     description_template="Create new event: {} from {} to {}. Returns the full updated calendar.",
     info_param_names=["name", "start_iso", "end_iso"],
@@ -524,7 +552,9 @@ async def create_event(name: str, start_iso: str, end_iso: str):
     }, default=str)
 
 
-@mcp.tool()
+@mcp.tool(
+    description="Deletes the calendar event with specified ID.",
+)
 @confirm(
     description_template="Delete event with cache ID: {}",
     info_param_names=["cache_id"],
@@ -614,7 +644,9 @@ def update_google_calendar_event(
     return updated_event
 
 
-@mcp.tool()
+@mcp.tool(
+    description="Updates one or more details of the event with the sepcified id."
+)
 @confirm(
     description_template="Update event id: {}",
     info_param_names=["event_id"],

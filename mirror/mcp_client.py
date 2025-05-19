@@ -14,7 +14,7 @@ INTERACTION_SERVICE_URL = os.getenv(
 )
 load_dotenv()
 class MCPClient:
-    def __init__(self):
+    def __init__(self, fake=False):
         self.session: Optional[ClientSession] = None
         self.exit_stack = AsyncExitStack()
         self.genai_client = genai.Client(api_key=os.getenv("GOOGLE_AI_STUDIO_API_KEY"))
@@ -22,8 +22,12 @@ class MCPClient:
         self.max_tool_turns = 5
         self.history: list[types.Content] = []
         self.interaction_service_url = INTERACTION_SERVICE_URL
+        self.fake = fake
 
     async def send_thought(self, thought):
+        if self.fake:
+            print(thought)
+            return True
         payload_to_service = {"thought": thought}
         service_url = self.interaction_service_url
         async with aiohttp.ClientSession() as session:
@@ -229,7 +233,7 @@ async def main():
     if len(sys.argv) < 2:
         print("Usage: python client.py <path_to_server_script>")
         sys.exit(1)
-    client = MCPClient()
+    client = MCPClient(fake=True)
     try:
         await client.connect_to_server(sys.argv[1])
         await client.chat_loop()

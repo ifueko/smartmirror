@@ -176,6 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return await resp.json();
     }
 
+
     chatForm.addEventListener('submit', async e => {
         e.preventDefault();
         const text = chatInput.value.trim();

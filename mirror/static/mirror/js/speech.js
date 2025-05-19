@@ -2,9 +2,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // UI elements
   const micBtn      = document.getElementById('btn-mic');
   const inputField  = document.getElementById('chat-input');
-  const sendBtn     = document.getElementById('send-btn');
-  const chatForm    = document.getElementById('chat-form');
-  const autosendChk = document.getElementById('autosend');
+  const autosendChk = document.getElementById('autosend-checkbox');
+  const chatForm = document.getElementById('chat-form');
 
   // State holders
   let audioContext, processor, sourceNode, mediaStream, socket;
@@ -42,9 +41,9 @@ document.addEventListener('DOMContentLoaded', () => {
             ? inputField.value.trim() + ' ' + t
             : t;
           inputField.dispatchEvent(new Event('input', { bubbles: true }));
-          if (autosendChk?.checked) {
-            if (sendBtn) sendBtn.click();
-            else if (chatForm) chatForm.submit();
+          console.log(autosendChk.checked);
+          if (autosendChk.checked) {
+            chatForm.submit();
           }
         } else if (msg.error) {
           console.error('ASR error:', msg.error);

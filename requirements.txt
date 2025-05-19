@@ -12,4 +12,4 @@ python-dotenv
 pytz
 uvicorn
 watchfiles
-git+https://github.com/openai/whisper.git 
+openai-whisper 
