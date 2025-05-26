@@ -1,3 +1,5 @@
+I make no promises with this code. Use at your own risk :)
+
 ## Jailbreak instructions for lululemon studio mirror
 https://github.com/olm3ca/mirror
 
