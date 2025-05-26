@@ -18,6 +18,7 @@ credentials
 media/
 local_settings.py
 db.sqlite3
+staticfiles
 
 # System files
 .DS_Store

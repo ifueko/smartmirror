@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ASR Recorder</title>
+</head>
+<body>
+  <h1>ASR Audio Recorder</h1>
+  <button id="startBtn">Start Recording</button>
+  <button id="stopBtn" disabled>Stop Recording</button>
+  <pre id="log"></pre>
+
+  <script>
+    const log = msg => {
+      const p = document.createElement('div');
+      p.textContent = msg;
+      document.getElementById('log').appendChild(p);
+    };
+
+    let socket, audioContext, processor, input;
+
+    document.getElementById('startBtn').onclick = async () => {
+      // 1) get mic and create AudioContext
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioContext = new AudioContext();
+      processor    = audioContext.createScriptProcessor(4096, 1, 1);
+      input        = audioContext.createMediaStreamSource(stream);
+      input.connect(processor);
+      processor.connect(audioContext.destination);
+
+      // 2) open websocket and wait for it to open
+      socket = new WebSocket(
+        (location.protocol === 'https:' ? 'wss://' : 'ws://')
+        + location.host
+        + '/ws/asr/'
+      );
+      socket.binaryType = 'arraybuffer';
+
+      socket.onmessage = ev => {
+        let msg = ev.data;
+        try { msg = JSON.parse(ev.data); } catch {}
+        log('← ' + JSON.stringify(msg));
+      };
+      socket.onerror = e => log('WebSocket error: ' + e.message);
+      socket.onclose = e => log('WebSocket closed: ' + e.code);
+
+      // **ONLY** once the socket is open do we send config *and* start streaming**
+      await new Promise(resolve => {
+        socket.onopen = () => {
+          log('WebSocket opened.');
+          // send audio_config
+          const sr = audioContext.sampleRate;
+          socket.send(JSON.stringify({ type: 'audio_config', sampleRate: sr }));
+          log('→ audio_config ' + sr);
+          resolve();
+        };
+      });
+
+      // 3) wire up audio streaming
+      processor.onaudioprocess = e => {
+        const floatData = e.inputBuffer.getChannelData(0);
+        const int16     = new Int16Array(floatData.length);
+        for (let i = 0; i < floatData.length; i++) {
+          let s = Math.max(-1, Math.min(1, floatData[i]));
+          int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        }
+        socket.send(int16.buffer);
+        log(`→ audio chunk ${int16.byteLength} bytes`);
+      };
+
+      document.getElementById('startBtn').disabled = true;
+      document.getElementById('stopBtn').disabled  = false;
+    };
+
+    document.getElementById('stopBtn').onclick = () => {
+      // tear down audio
+      processor.disconnect();
+      input.disconnect();
+      audioContext.close();
+
+      // tell server to save
+      socket.send(JSON.stringify({ type: 'end_stream' }));
+      log('→ end_stream');
+
+      document.getElementById('stopBtn').disabled  = true;
+      document.getElementById('startBtn').disabled = false;
+    };
+  </script>
+</body>
+</html>

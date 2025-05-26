@@ -1,7 +1,15 @@
+aiohttp
+channels
 django
+geopy
 google-api-python-client
 google-auth
+google-genai
+mcp
 notion_client
 python-dateutil
 python-dotenv
 pytz
+uvicorn
+watchfiles
+openai-whisper 

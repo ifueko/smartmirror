@@ -1,32 +1,48 @@
+import asyncio
 import datetime
+import logging
 import json
 import os
+import pytz
 import random
 import requests
+import uuid
+
 from collections import defaultdict
 from dateutil.parser import parse as parse_date
+from google.oauth2 import service_account
+from notion_client import Client
+
 from django.conf import settings
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpRequest
 from django.shortcuts import render
 from django.utils.dateparse import parse_date
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from notion_client import Client
-from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
-from django.views.decorators.http import require_POST
-import pytz
-local_tz = pytz.timezone("America/New_York")  # or whatever your timezone is
+from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie, csrf_exempt
+from django.views.decorators.http import require_GET, require_POST, require_http_methods
+from typing import Dict, Any, Literal, List
 
+from . import database_functions
+from .services import get_mcp_service
 
-import logging
 logger = logging.getLogger(__name__)
-
+local_tz = pytz.timezone("America/New_York")
+confirmations_db: Dict[str, Dict[str, Any]] = {}
+thoughts_db: List[str] = []
+db_lock = asyncio.Lock()
+thought_db_lock = asyncio.Lock()
+ConfirmationStatusLiteral = Literal[
+    "pending", "confirmed", "denied", "timeout", "error", "not_found"
+]
+StoredConfirmationStatusLiteral = Literal[
+    "pending", "confirmed", "denied", "timeout", "error"
+]
 seed_offset_vision_board = 0
 seed_offset_affirmations = 0
 notion = Client(auth=settings.NOTION_API_KEY)
 PRIORITY_ORDER = {"High": 1, "Medium": 2, "Low": 3}
 STATUS_ORDER = {"Done": 3, "Not started": 1, "In progress": 2}
 VISION_BOARD_IMAGE_COUNT = 24
+
 
 def weather_forecast(request):
     lat = 42.3601
@@ -40,213 +56,324 @@ def weather_forecast(request):
     try:
         r = requests.get(url)
         data = r.json()["current"]
-        return JsonResponse({
-            "temp": data["temperature_2m"],
-            "feels_like": data["apparent_temperature"],
-            "weather_code": data["weather_code"]
-        })
+        return JsonResponse(
+            {
+                "temp": data["temperature_2m"],
+                "feels_like": data["apparent_temperature"],
+                "weather_code": data["weather_code"],
+            }
+        )
     except Exception as e:
         print(e)
         return JsonResponse({"error": str(e)}, status=500)
 
+
 def calendar_feed(request):
     try:
         # Credentials & Calendar Setup
-        SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
+        SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
         creds_path = os.path.join(settings.BASE_DIR, settings.GOOGLE_CALENDAR_CRED_PATH)
         calendar_ids = settings.GOOGLE_CALENDAR_IDS
-        creds = service_account.Credentials.from_service_account_file(creds_path, scopes=SCOPES)
-        service = build('calendar', 'v3', credentials=creds)
-        events = []
-        # Time range for the next 48 hours
-        now = datetime.datetime.now(local_tz)
-        time_min = now.isoformat()
-        time_max = (now + datetime.timedelta(hours=48)).isoformat()
-        for calendar_id in calendar_ids:
-            events_result = service.events().list(
-                calendarId=calendar_id,
-                timeMin=time_min,
-                timeMax=time_max,
-                singleEvents=True,
-                orderBy='startTime'
-            ).execute()
-            for event in events_result.get('items', []):
-                start = event['start'].get('dateTime', event['start'].get('date'))
-                end = event['end'].get('dateTime', event['end'].get('date'))
-                events.append({
-                    "title": event.get("summary", "No Title"),
-                    "start": start,
-                    "end": end,
-                    "location": event.get("location", ""),
-                    "description": event.get("description", ""),
-                })
-        events = sorted(events, key=lambda x: x['start'])
+        creds = service_account.Credentials.from_service_account_file(
+            creds_path, scopes=SCOPES
+        )
+        events = database_functions.calendar_feed(creds, calendar_ids)
         return JsonResponse({"events": events})
     except Exception as e:
+        print(e)
         return JsonResponse({"error": str(e)}, status=500)
 
 
 def fetch_habit_group(request, emoji):  # emoji: ☀️, 🌙, 🌸
     db_id = settings.NOTION_HABIT_DB_ID
-
     try:
-        response = notion.databases.query(
-            **{
-                "database_id": db_id,
-                "sorts": [{"property": "Day", "direction": "descending"}],
-                "page_size": 1
-            }
-        )
-        latest = response["results"][0]
-        props = latest["properties"]
-
-        habits = []
-        for key, value in props.items():
-            if emoji in key and value["type"] == "checkbox":
-                habits.append({
-                    "title": key.strip(),
-                    "done": value["checkbox"],
-                    "id": latest["id"],
-                    "property": key  # used for updating
-                })
-
-        return JsonResponse({"habits": habits})
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
-
-def task_feed(request):
-    database_id = settings.NOTION_TASK_DB_ID
-    now = datetime.datetime.now(local_tz)
-    today_str = now.isoformat()
-    print("TODAY IS ", now, today_str)
-    try:
-        # 1. Fetch all children tasks due today or earlier
-        child_response = notion.databases.query(
-            **{
-                "database_id": database_id,
-                "filter": {
-                    "or": [
-                       {
-                        "and": [ 
-                            {
-                                "property": "Date",
-                                "date": {
-                                    "on_or_before": today_str
-                                }
-                            },
-                            {
-                                "property": "Status",
-                                "status": {
-                                    "does_not_equal": "Done"
-                                }
-                            }
-                        ]
-                        },
-                        {"and": [
-                            {
-                                "property": "Status",
-                                "status": {
-                                    "equals": "Done"
-                                }
-                            },
-                            {
-                                "property": "Date",
-                                "date": {
-                                   "equals": today_str
-                                }
-                            }]
-                        }
-                    ]
-                }
-            }
-        )
-        child_tasks = child_response.get("results", [])
-        child_tasks = [task for task in child_tasks if task["properties"]["Date"]["date"] and task["properties"]["Date"]["date"]["start"] <= today_str]
-        # 2. Collect parent IDs
-        parent_ids = {
-            task["properties"]["Parent item"]["relation"][0]["id"]
-            for task in child_tasks
-            if task["properties"]["Parent item"]["relation"]
-        }
-
-        # 3. Fetch parent tasks if any
-        parent_tasks = []
-        for parent_id in parent_ids:
-            try:
-                page = notion.pages.retrieve(parent_id)
-                parent_tasks.append(page)
-            except Exception:
-                pass
-
-        raw_tasks = child_tasks + parent_tasks
+        habits = database_functions.fetch_habit_group(notion, emoji, db_id)
     except Exception as e:
         print(e)
         return JsonResponse({"error": str(e)}, status=500)
-    # 1. Process flat tasks
-    flat_tasks = {}
-    for task in raw_tasks:
-        props = task["properties"]
-        name = props["Name"]["title"][0]["plain_text"] if props["Name"]["title"] else "Untitled"
-        status = props["Status"]["status"]["name"] if props["Status"]["status"] else None
-        priority = props["Priority"]["select"]["name"] if props["Priority"]["select"] else None 
-        parent_id = props["Parent item"]["relation"][0]["id"] if props["Parent item"]["relation"] else None
-        date_prop = props["Date"]["date"]["start"] if props["Date"]["date"] else None
-        parsed_date = parse_date(date_prop) if date_prop else None
-        print(name, date_prop, parsed_date)
-        flat_tasks[task["id"]] = {
-            "id": task["id"],
-            "title": name,
-            "date": parsed_date,
-            "status": status,
-            "priority": priority,
-            "priority_value": PRIORITY_ORDER.get(priority, 99),
-            "status_value": STATUS_ORDER.get(status, 99),
-            "parent_id": parent_id,
-            "children": []
-        }
+    return JsonResponse({"habits": habits})
 
-    # 2. Build hierarchy
-    root_tasks = []
 
-    for task_id, task in flat_tasks.items():
-        parent_id = task["parent_id"]
-        if parent_id and parent_id in flat_tasks:
-            flat_tasks[parent_id]["children"].append(task)
-        else:
-            root_tasks.append(task)
-
-    # 3. Sort children at each level
-    def sort_task_tree(tasks):
-        def sort_key(t):
-            return (
-                t["date"] or datetime.date.max,
-                t["status_value"],
-                t["priority_value"]
-            )
-        tasks.sort(key=sort_key)
-        for t in tasks:
-            sort_task_tree(t["children"])
-
-    sort_task_tree(root_tasks)
-    # 4. Return final tree
+def task_feed(request):
+    database_id = settings.NOTION_TASK_DB_ID
+    try:
+        root_tasks = database_functions.task_feed(notion, database_id)
+    except Exception as e:
+        print(e)
+        return JsonResponse({"error": str(e)}, status=500)
     return JsonResponse({"tasks": root_tasks})
+
 
 @ensure_csrf_cookie
 def dashboard(request):
     return render(request, "mirror/dashboard.html")
 
+
+@ensure_csrf_cookie
+def voice_chrome(request):
+    return render(request, "mirror/voice_chat_chrome.html")
+
+
+@ensure_csrf_cookie
+def voice(request):
+    return render(request, "mirror/voice_chat.html")
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+async def voice_chat(request):
+    try:
+        data = json.loads(request.body)
+        msg = data.get("message", "").strip()
+        confirmed_action_details = data.get(
+            "confirmed_action_details"
+        )  # Sent by frontend on confirm
+
+        mcp_service = await get_mcp_service()
+        if not mcp_service or not mcp_service.client or not mcp_service.client.session:
+            logger.error("MCP Service or session not available.")
+            return JsonResponse(
+                {"error": "Voice service is currently unavailable."}, status=503
+            )
+
+        if confirmed_action_details:
+            # User has confirmed an action from the modal
+            tool_name = confirmed_action_details.get("tool_name")
+            parameters = confirmed_action_details.get("parameters", {})
+            parameters["confirmed_by_user"] = True  # Crucial: signal confirmation
+
+            if not tool_name:
+                logger.error("Confirmed action details missing tool_name.")
+                return JsonResponse(
+                    {"error": "Invalid confirmation request."}, status=400
+                )
+
+            logger.info(
+                f"Executing confirmed MCP tool: '{tool_name}' with params: {parameters}"
+            )
+            try:
+                # Directly call the MCP tool via the session
+                # Ensure mcp_service.client.session is valid
+                if not mcp_service.client.session:
+                    logger.error(
+                        "MCP client session is not available for direct tool call."
+                    )
+                    return JsonResponse(
+                        {"error": "Failed to execute confirmed action: session lost."},
+                        status=500,
+                    )
+
+                tool_result = await mcp_service.client.session.call_tool(
+                    tool_name, parameters
+                )
+
+                response_payload_str = None
+                if (
+                    hasattr(tool_result, "content")
+                    and tool_result.content
+                    and hasattr(tool_result.content[0], "text")
+                ):
+                    response_payload_str = tool_result.content[0].text
+
+                if not response_payload_str:
+                    logger.error(
+                        f"No text content in tool_result for {tool_name}: {tool_result}"
+                    )
+                    return JsonResponse(
+                        {"error": "Received empty response from confirmed action."},
+                        status=500,
+                    )
+
+                response_payload = json.loads(response_payload_str)
+
+                if response_payload.get("status") == "success":
+                    return JsonResponse(
+                        {
+                            "response": [
+                                response_payload.get(
+                                    "message", "Action completed successfully."
+                                )
+                            ],
+                            "action_confirmed_executed": True,
+                            "updated_data": response_payload.get(
+                                "updated_data"
+                            ),  # Pass this to frontend
+                        }
+                    )
+                else:  # Error from the MCP tool after confirmation
+                    return JsonResponse(
+                        {
+                            "error": response_payload.get(
+                                "message", "Confirmed action resulted in an error."
+                            ),
+                            "action_confirmed_executed": True,
+                        },
+                        status=400,
+                    )
+
+            except Exception as e:
+                logger.error(
+                    f"Error directly calling MCP tool '{tool_name}': {type(e).__name__}: {e}",
+                    exc_info=True,
+                )
+                return JsonResponse(
+                    {"error": f"Error executing confirmed action: {str(e)}"}, status=500
+                )
+
+        elif not msg:  # If not a confirmed action, a message is required
+            logger.warning(
+                "Voice chat request with empty message and no confirmed action."
+            )
+            return JsonResponse({"error": "Message cannot be empty."}, status=400)
+
+        else:  # Standard query to Gemini
+            logger.info(f"Processing voice chat query via Gemini: '{msg}'")
+            # This call goes to Gemini, which might then call an MCP tool.
+            # The `process_query` in `mcp_client.py` will interact with Gemini and tools.
+            # The final response from Gemini (after any tool calls it makes) is returned.
+            response_text_from_gemini_or_tool = await mcp_service.process_query(msg)
+
+            try:
+                # Attempt to parse the response. If it's a JSON from our MCP tool (e.g., confirmation_required),
+                # it means Gemini decided the tool's direct JSON output was the answer.
+                parsed_tool_response = json.loads(response_text_from_gemini_or_tool)
+
+                if (
+                    isinstance(parsed_tool_response, dict)
+                    and parsed_tool_response.get("status") == "confirmation_required"
+                ):
+                    return JsonResponse(
+                        {
+                            "needs_confirmation": True,
+                            "action_details": parsed_tool_response.get(
+                                "action_details"
+                            ),
+                            "response": [
+                                parsed_tool_response.get("action_details", {}).get(
+                                    "description", "Please confirm this action."
+                                )
+                            ],
+                        }
+                    )
+                # If a tool ran successfully without confirmation (e.g. get_tasks) and Gemini returned its JSON:
+                elif isinstance(parsed_tool_response, dict) and (
+                    parsed_tool_response.get("status") == "success"
+                    or parsed_tool_response.get("status") == "error"
+                ):
+                    return JsonResponse(
+                        {
+                            "response": [
+                                parsed_tool_response.get("message", "Action processed.")
+                            ],
+                            "updated_data": parsed_tool_response.get(
+                                "updated_data"
+                            ),  # For get_tasks, get_habits etc.
+                        }
+                    )
+                else:
+                    # It was valid JSON but not in our expected tool format. Treat as plain text from Gemini.
+                    response_lines = str(response_text_from_gemini_or_tool).split("\n")
+                    return JsonResponse({"response": response_lines})
+
+            except json.JSONDecodeError:
+                # It's a natural language response from Gemini, not a direct JSON from our tools.
+                response_lines = [
+                    r.strip()
+                    for r in response_text_from_gemini_or_tool.strip().split("\n")
+                    if len(r.strip()) > 0
+                ]
+                return JsonResponse({"response": response_lines})
+            except Exception as e:
+                logger.error(
+                    f"Error processing Gemini's response in voice_chat: {type(e).__name__}: {e}",
+                    exc_info=True,
+                )
+                return JsonResponse(
+                    {"error": f"Internal error processing response: {str(e)}"},
+                    status=500,
+                )
+
+    except json.JSONDecodeError:
+        logger.error("Invalid JSON received in voice_chat request.", exc_info=True)
+        return JsonResponse({"error": "Invalid JSON format."}, status=400)
+    except Exception as e:
+        logger.error(
+            f"Error processing voice_chat request: {type(e).__name__}: {e}",
+            exc_info=True,
+        )
+        return JsonResponse(
+            {"error": f"An internal error occurred: {str(e)}"}, status=500
+        )
+
+
+async def voice_chat_orig(request):
+    try:
+        data = json.loads(request.body)
+        msg = data.get("message", "").strip()
+
+        if not msg:
+            logger.warning("Voice chat request with empty message.")
+            return JsonResponse({"error": "Message cannot be empty."}, status=400)
+
+        # Get the initialized and connected MCP service
+        mcp_service = await get_mcp_service()
+
+        logger.info(f"Processing voice chat query: '{msg}'")
+        # The mcp_service.client.session can be checked here if needed for debugging
+        # logger.debug(f"MCP Session state: {mcp_service.client.session}")
+
+        response_text = await mcp_service.process_query(msg)
+        response_text = response_text.split("\n")
+        return JsonResponse({"response": response_text})
+
+    except json.JSONDecodeError:
+        logger.error("Invalid JSON received in voice_chat request.", exc_info=True)
+        return JsonResponse({"error": "Invalid JSON format."}, status=400)
+    except Exception as e:
+        # Log the full exception details for debugging
+        logger.error(
+            f"Error processing voice_chat request: {type(e).__name__}: {e}",
+            exc_info=True,
+        )
+        # Provide a generic error message to the client
+        return JsonResponse(
+            {"error": f"An internal error occurred: {str(e)}"}, status=500
+        )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+async def voice_chat2(request):
+    # try:
+    data = json.loads(request.body)
+    msg = data.get("message", "").strip()
+    if not msg:
+        return JsonResponse({"error": str(e)}, status=500)
+    await _ensure_connected()
+    print(mcp_client.session)
+    response = await mcp_client.process_query(msg)
+    return JsonResponse({"response": response})
+
+
+# except Exception as e:
+#    return JsonResponse({"error": str(e)}, status=500)
+
+
 def vision_board_feed(request):
     global seed_offset_vision_board
     folder = os.path.join(settings.BASE_DIR, "mirror/static/mirror/vision")
-    images = sorted([
-        f"/static/mirror/vision/{file}"
-        for file in os.listdir(folder)
-        if file.lower().endswith((".jpg", ".png", ".jpeg", ".webp"))
-    ])
+    images = sorted(
+        [
+            f"/static/mirror/vision/{file}"
+            for file in os.listdir(folder)
+            if file.lower().endswith((".jpg", ".png", ".jpeg", ".webp"))
+        ]
+    )
     seed = int(datetime.date.today().strftime("%Y%m%d")) + 42 + seed_offset_vision_board
     seed_offset_vision_board -= 1
     random.Random(seed).shuffle(images)
     return JsonResponse({"images": images[:VISION_BOARD_IMAGE_COUNT]})
+
 
 def affirmations_feed(request):
     global seed_offset_affirmations
@@ -257,13 +384,11 @@ def affirmations_feed(request):
         affirmations = json.load(f)
 
     seed = int(datetime.date.today().strftime("%Y%m%d")) + 42 + seed_offset_affirmations
-    seed_offset_affirmations -= 1 # on refresh show yesterday's affirmations
+    seed_offset_affirmations -= 1  # on refresh show yesterday's affirmations
     random.Random(seed).shuffle(affirmations)
-    affirmations = affirmations[:1] # get top affirmation
+    affirmations = affirmations[:1]  # get top affirmation
     return JsonResponse({"affirmations": affirmations})
 
-def update_task(request):
-    return JsonResponse({"error": "not yet implemented"})
 
 @csrf_protect
 @require_POST
@@ -277,13 +402,7 @@ def update_habit(request):
         if not page_id or not prop:
             logger.error("❌ Missing required fields")
             return JsonResponse({"error": "Missing page_id or property"}, status=400)
-        print(page_id, prop, done)
-        notion.pages.update(
-            page_id=page_id,
-            properties={
-                prop: {"checkbox": done}
-            }
-        )
+        database_functions.update_habit(notion, page_id, prop, done)
         return JsonResponse({"success": True})
 
     except Exception as e:
@@ -307,18 +426,208 @@ def update_task(request):
 
         print(f"📝 Updating task {page_id} → status: {new_status}")
 
-        # Update the Notion status field
-        notion.pages.update(
-            page_id=page_id,
-            properties={
-                "Status": {
-                    "status": {"name": new_status}
-                }
-            }
-        )
-
+        database_functions.update_task(notion, page_id, new_status)
         return JsonResponse({"success": True})
 
     except Exception as e:
         logger.exception("❌ Exception in update_task")
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+async def handle_thought(request: HttpRequest):
+    payload = json.loads(request.body)
+    thought = payload.get("thought")
+    if not thought:
+        return JsonResponse({"error": "Need thought to add to thoughts."}, status=400)
+    async with thought_db_lock:
+        thoughts_db.append(thought)
+    print(thoughts_db)
+    return JsonResponse(
+        {
+            "thought": thought,
+            "status": "added",
+            "message": "Added thought for UI processing.",
+        },
+        status=202,
+    )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+async def handle_request_confirmation(request: HttpRequest):
+    """
+    Called by mirrordb_server.py to INITIATE a confirmation.
+    Stores the request for the UI to pick up.
+    """
+    try:
+        payload = json.loads(request.body)
+        action_id = payload.get("action_id")
+        description = payload.get("description")
+        details = payload.get("details", {})
+
+        if not all([action_id, description]):
+            return JsonResponse(
+                {"error": "Missing action_id or description"}, status=400
+            )
+
+        async with db_lock:  # If this view is truly async
+            if (
+                action_id in confirmations_db
+                and confirmations_db[action_id]["status"] != "pending"
+            ):
+                return JsonResponse(
+                    {
+                        "error": f"Action ID '{action_id}' already processed or conflict."
+                    },
+                    status=409,
+                )
+
+            confirmations_db[action_id] = {
+                "action_id": action_id,
+                "description": description,
+                "details": details,
+                "status": "pending",  # type: StoredConfirmationStatusLiteral
+            }
+        logger.info(
+            f'[WEB APP VIEW] Confirmation requested: {action_id} - "{description[:50]}..."'
+        )
+        return JsonResponse(
+            {
+                "action_id": action_id,
+                "status": "pending",
+                "message": "Confirmation request received for UI processing.",
+            },
+            status=202,
+        )
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON payload"}, status=400)
+    except Exception as e:
+        logger.error(f"Error in handle_request_confirmation: {e}", exc_info=True)
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@require_http_methods(["GET"])
+async def handle_get_confirmation_status(request: HttpRequest, action_id: str):
+    """
+    Called by mirrordb_server.py to POLL for the status.
+    """
+    async with db_lock:  # If async view
+        # with db_lock: # If sync view
+        item = confirmations_db.get(action_id)
+
+    if not item:
+        return JsonResponse(
+            {
+                "action_id": action_id,
+                "status": "not_found",  # type: ConfirmationStatusLiteral
+                "description": None,
+                "details": None,
+            }
+        )  # FastAPI version returned 200 with this, let's stick to that for client compatibility
+
+    logger.info(
+        f"[WEB APP VIEW] Status check for {action_id}: current status is {item['status']}"
+    )
+    return JsonResponse(
+        {
+            "action_id": item["action_id"],
+            "status": item["status"],  # type: ConfirmationStatusLiteral
+            "description": item.get("description"),
+            "details": item.get("details"),
+        }
+    )
+
+
+# === Endpoints for Frontend UI ===
+
+
+@require_http_methods(["GET"])
+async def get_pending_thoughts(request: HttpRequest):
+    thoughts = []
+    async with thought_db_lock:
+        for i in range(len(thoughts_db)):
+            item = thoughts_db.pop(0)
+            thoughts.append(item)
+    print(thoughts)
+    return JsonResponse({"thoughts": thoughts})
+
+
+@require_http_methods(["GET"])
+async def get_pending_ui_confirmations(request: HttpRequest):
+    pending_for_ui: List[Dict[str, Any]] = []
+    async with db_lock:  # If async view
+        for action_id, item_data in confirmations_db.items():
+            if item_data["status"] == "pending":
+                pending_for_ui.append(
+                    {
+                        "action_id": action_id,
+                        "description": item_data["description"],
+                        "details": item_data.get("details", {}),
+                    }
+                )
+    return JsonResponse(pending_for_ui, safe=False)  # safe=False for list response
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+async def submit_ui_confirmation(request: HttpRequest, action_id: str):
+    """
+    Called by your voice_chat page's JavaScript when the user clicks "Confirm" or "Deny".
+    """
+    try:
+        payload = json.loads(request.body)
+        user_confirmed = payload.get("confirmed")  # Expecting {"confirmed": true/false}
+
+        if user_confirmed is None or not isinstance(user_confirmed, bool):
+            return JsonResponse(
+                {
+                    "error": "Invalid payload: 'confirmed' boolean field missing or invalid."
+                },
+                status=400,
+            )
+
+        new_status: StoredConfirmationStatusLiteral = (
+            "confirmed" if user_confirmed else "denied"
+        )
+
+        async with db_lock:  # If async view
+            # with db_lock: # If sync view
+            if action_id not in confirmations_db:
+                return JsonResponse(
+                    {"error": f"Action ID '{action_id}' not found."}, status=404
+                )
+
+            item = confirmations_db[action_id]
+            if item["status"] != "pending":
+                logger.info(
+                    f"[WEB APP VIEW] UI submitted for already processed action {action_id} (current: {item['status']}). Ignoring."
+                )
+                return JsonResponse(
+                    {
+                        "action_id": action_id,
+                        "status": item["status"],
+                        "message": "Action already processed, UI input ignored.",
+                    }
+                )
+
+            item["status"] = new_status
+
+        logger.info(
+            f"[WEB APP VIEW] UI submitted for {action_id}: User chose {'CONFIRMED' if user_confirmed else 'DENIED'}. Status set to {new_status}."
+        )
+        return JsonResponse(
+            {
+                "action_id": action_id,
+                "status": new_status,
+                "message": "Confirmation decision recorded.",
+            }
+        )
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON payload"}, status=400)
+    except Exception as e:
+        logger.error(
+            f"Error in submit_ui_confirmation for {action_id}: {e}", exc_info=True
+        )
         return JsonResponse({"error": str(e)}, status=500)
