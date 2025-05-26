@@ -1,4 +1,5 @@
 from mcp.server.fastmcp import FastMCP
+from typing import Literal
 import uuid
 import sys
 from typing import List
@@ -75,8 +76,8 @@ def confirm(
                 name = cache[cache_key][id_]["name"]
                 description = f"Update {cache_key} ({name}): " + description
             action = str(uuid.uuid4())
-            confirm = True # For testing we can ignore confirmation polling
-            #confirm = await poll_confirmation(description, action)
+            #confirm = True  # For testing we can ignore confirmation polling
+            confirm = await poll_confirmation(description, action)
             assert confirm, f"{description}: this action was rejected."
             result = await tool_func(*args, **kwargs)
             return result
@@ -116,6 +117,7 @@ cache["tasks"] = {
     "0": {
         "name": "clean kitchen",
         "status": "In Progress",
+        "priority": "Low",
     }
 }
 
@@ -169,14 +171,15 @@ async def update_habit_status(id_: str, status: bool):
 
 @mcp.tool()
 @confirm(
-    description_template="Create new task: {} with due date {}",
-    info_param_names=["name", "due_date"],
+    description_template="Create new task: {} with due date {}and priority {}",
+    info_param_names=["name", "due_date_iso", "priority"],
 )
-async def create_task(name: str, due_date_iso: str):
+async def create_task(name: str, due_date_iso: str, priority: Literal["High", "Medium", "Low"]):
     global cache
     cache["tasks"][str(len(cache["tasks"]))] = {
         "name": name,
         "status": "Not started",
+        "priority": priority,
     }
     return {
         "function_called": "update_task_status",

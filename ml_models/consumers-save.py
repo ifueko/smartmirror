@@ -21,6 +21,7 @@ except Exception:
     logger.exception("Failed to load Whisper model.")
     WHISPER_MODEL = None
 
+
 class ASRConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         await self.accept()
@@ -41,7 +42,9 @@ class ASRConsumer(AsyncWebsocketConsumer):
                 self.client_sample_rate = int(msg.get("sampleRate", 0))
                 if not self.client_sample_rate:
                     return await self.send_error("Invalid sampleRate")
-                return await self.send(text_data=json.dumps({"status":"config_received"}))
+                return await self.send(
+                    text_data=json.dumps({"status": "config_received"})
+                )
 
             if t == "end_stream":
                 logger.info("End stream, starting transcription.")
@@ -52,13 +55,15 @@ class ASRConsumer(AsyncWebsocketConsumer):
             if not self.client_sample_rate:
                 return await self.send_error("Audio config not received")
             self.audio_buffer.extend(bytes_data)
-            logger.debug(f"Buffered {len(bytes_data)} bytes, total {len(self.audio_buffer)}")
+            logger.debug(
+                f"Buffered {len(bytes_data)} bytes, total {len(self.audio_buffer)}"
+            )
             return
 
     async def _finalize_stream(self, reason=""):
         # 1) save to WAV
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename  = f"received_{timestamp}.wav"
+        filename = f"received_{timestamp}.wav"
         with wave.open(filename, "wb") as wf:
             wf.setnchannels(1)
             wf.setsampwidth(2)
@@ -71,17 +76,21 @@ class ASRConsumer(AsyncWebsocketConsumer):
         # 2) transcribe in thread
         if WHISPER_MODEL:
             result = await asyncio.to_thread(WHISPER_MODEL.transcribe, filename)
-            text   = result.get("text", "").strip()
+            text = result.get("text", "").strip()
         else:
             text = "[no model loaded]"
 
         # 3) send back to client
-        await self.send(text_data=json.dumps({
-            "type":       "transcript",
-            "filename":   filename,
-            "transcript": text,
-            "reason":     reason
-        }))
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "type": "transcript",
+                    "filename": filename,
+                    "transcript": text,
+                    "reason": reason,
+                }
+            )
+        )
 
         # 4) close WebSocket
         await self.close(code=1000, reason="done")

@@ -125,18 +125,16 @@ def get_now():
     now_str = now.isoformat()
     return now_str
 
+
 mcp = FastMCP("SmartMirror BackendDB FastMCP")
 
-@mcp.tool(
-    description="Gets the user's local time zone."
-)
+
+@mcp.tool(description="Gets the user's local time zone.")
 async def get_time_zone() -> dict:
     return "America/New_York"
 
 
-@mcp.tool(
-    description="Gets the current date and time in the user's local time zone."
-)
+@mcp.tool(description="Gets the current date and time in the user's local time zone.")
 async def get_current_datetime() -> dict:
     return get_now()
 
@@ -150,7 +148,7 @@ async def tasks_on_or_before(on_or_before_date: str):
 
 @mcp.tool(
     name="get_active_tasks",
-    description="Returns active tasks, defined as tasks that are (or have subtasks that are) not complete and due on or before the current date."
+    description="Returns active tasks, defined as tasks that are (or have subtasks that are) not complete and due on or before the current date.",
 )
 async def current_tasks():
     return await get_tasks()
@@ -263,7 +261,7 @@ async def get_events(start_date=None, end_date=None):
     count = 0
     events = get_google_calendar_events(creds, calendar_ids, start_date, end_date)
     for i, e in enumerate(events):
-        e['event_id'] = i
+        e["event_id"] = i
         cache["events"][i] = e
     events = clean_events(cache["events"])
     return {
@@ -318,6 +316,7 @@ def confirm(
     info_param_names: List[str] = [],
 ):
     global cache
+
     def decorator(tool_func):
         @functools.wraps(tool_func)
         async def wrapper(*args, **kwargs):
@@ -388,7 +387,11 @@ async def create_project_or_task_standalone(
     if task:
         tasks = await get_tasks()
         return json.dumps(
-            {"status": "Success", "tasks": tasks,"new_task":clean_tasks({1: task})[1]},
+            {
+                "status": "Success",
+                "tasks": tasks,
+                "new_task": clean_tasks({1: task})[1],
+            },
             default=str,
         )
     else:
@@ -404,7 +407,13 @@ async def create_project_or_task_standalone(
 )
 @confirm(
     description_template="Create new child task: {} under project with id: {} with due date {}, status {}, priority {}",
-    info_param_names=["child_title", "project_id", "due_date_iso", "status", "priority"],
+    info_param_names=[
+        "child_title",
+        "project_id",
+        "due_date_iso",
+        "status",
+        "priority",
+    ],
 )
 async def create_subtask_with_project_id(
     project_id: str,
@@ -415,9 +424,15 @@ async def create_subtask_with_project_id(
 ) -> str:
     """MCP function for creating a new child task under an existing project."""
     notion = Client(auth=NOTION_API_KEY)
-    notion_project_id = cache['tasks'][project_id]['id']
+    notion_project_id = cache["tasks"][project_id]["id"]
     child = create_child_task(
-        notion, NOTION_TASK_DB, notion_project_id, child_title, due_date_iso, priority, status
+        notion,
+        NOTION_TASK_DB,
+        notion_project_id,
+        child_title,
+        due_date_iso,
+        priority,
+        status,
     )
     if child:
         tasks = await get_tasks()  # Refresh cache to reflect the new child
@@ -482,7 +497,12 @@ async def create_new_project_with_subtask(
     if project_task and child_task:
         tasks = await get_tasks()  # Refresh cache
         new_tasks = clean_tasks({0: project_task, 1: child_task})
-        result = {"status": "Success", "tasks": tasks, "project": new_tasks[0], "child_task": new_tasks[1]}
+        result = {
+            "status": "Success",
+            "tasks": tasks,
+            "project": new_tasks[0],
+            "child_task": new_tasks[1],
+        }
         return json.dumps(result, default=str)
     else:
         return json.dumps(
@@ -490,9 +510,8 @@ async def create_new_project_with_subtask(
             default=str,
         )
 
-@mcp.tool(
-    description="Updates one or more details of the task with the sepcified id."
-)
+
+@mcp.tool(description="Updates one or more details of the task with the sepcified id.")
 @confirm(
     description_template="Update task: id {}; params: {} {} {} {}",
     info_param_names=["task_id", "title", "due_date_iso", "status", "priority"],
@@ -514,7 +533,7 @@ async def update_task(
             default=str,
         )
     notion = Client(auth=NOTION_API_KEY)
-    notion_task_id = cache['tasks'][task_id]['id']
+    notion_task_id = cache["tasks"][task_id]["id"]
     updated_task = update_notion_task(
         notion, notion_task_id, due_date_iso, title, priority, status
     )
@@ -522,7 +541,12 @@ async def update_task(
         tasks = await get_tasks()
         updated_task = clean_tasks({1: updated_task})[1]
         return json.dumps(
-            {"status": "Success", "updated_task_id": task_id, "tasks": tasks, "updated_task": updated_task},
+            {
+                "status": "Success",
+                "updated_task_id": task_id,
+                "tasks": tasks,
+                "updated_task": updated_task,
+            },
             default=str,
         )
     else:
@@ -533,7 +557,8 @@ async def update_task(
 
 
 @mcp.tool(
-    description="Creates a new event with description, starting and ending at the specified ISO Datetimes."
+    name="create_calendar_event",
+    description="Creates a new calendar event with description, starting and ending at the specified ISO Datetimes.",
 )
 @confirm(
     description_template="Create new event: {} from {} to {}. Returns the full updated calendar.",
@@ -548,12 +573,15 @@ async def create_event(description: str, start_iso: str, end_iso: str):
     event = create_calendar_event(creds, calendar_id, description, start_iso, end_iso)
     assert event.get("htmlLink"), "Could not create event."
     events = await get_events()
-    return json.dumps({
-        "function_called": "create_event",
-        "status": "Success",
-        "events": events,
-        "new_event": event,
-    }, default=str)
+    return json.dumps(
+        {
+            "function_called": "create_event",
+            "status": "Success",
+            "events": events,
+            "new_event": event,
+        },
+        default=str,
+    )
 
 
 @mcp.tool(
@@ -590,7 +618,7 @@ async def delete_event(event_id: str):
             "function_called": "delete_event",
             "status": "Success",
             "deleted_event_id": event_id,
-            "events": events
+            "events": events,
         }
     except Exception as e:
         return json.dumps(
@@ -619,7 +647,9 @@ def update_google_calendar_event(
     print()
     calendar_id = event["calendar_id"]
     event_id = event["id"]
-    event_body = service.events().get(calendarId=calendar_id, eventId=event_id).execute()
+    event_body = (
+        service.events().get(calendarId=calendar_id, eventId=event_id).execute()
+    )
     if title:
         event_body["summary"] = title
     if start_iso:
@@ -636,7 +666,8 @@ def update_google_calendar_event(
         event_body["location"] = location
     if description:
         event_body["description"] = description
-    print(event_body); print()
+    print(event_body)
+    print()
     updated_event = (
         service.events()
         .update(calendarId=calendar_id, eventId=event_id, body=event_body)
@@ -648,9 +679,7 @@ def update_google_calendar_event(
     return updated_event
 
 
-@mcp.tool(
-    description="Updates one or more details of the event with the sepcified id."
-)
+@mcp.tool(description="Updates one or more details of the event with the sepcified id.")
 @confirm(
     description_template="Update event id: {}",
     info_param_names=["event_id"],

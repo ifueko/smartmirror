@@ -13,12 +13,14 @@ INTERACTION_SERVICE_URL = os.getenv(
     "INTERACTION_SERVICE_URL", "http://localhost:8000/api"
 )
 load_dotenv()
+TEMPERATURE=0.0
+
 class MCPClient:
     def __init__(self, fake=False):
         self.session: Optional[ClientSession] = None
         self.exit_stack = AsyncExitStack()
-        self.genai_client = genai.Client(api_key=os.getenv("GOOGLE_AI_STUDIO_API_KEY"))
-        self.model_id = "gemini-1.5-flash"
+        self.genai_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+        self.model_id = "gemini-2.0-flash"
         self.history: list[types.Content] = []
         self.interaction_service_url = INTERACTION_SERVICE_URL
         self.fake = fake
@@ -38,20 +40,27 @@ class MCPClient:
             return True
 
     async def _execute_tool_calls(
-        self, function_calls: list[types.FunctionCall],
+        self,
+        function_calls: list[types.FunctionCall],
     ) -> list[types.Part]:
         tool_response_parts: list[types.Part] = []
-        await self.send_thought(f"Executing {len(function_calls)} tool call{'s' if len(function_calls) > 1 else ''}...")
+        await self.send_thought(
+            f"Executing {len(function_calls)} tool call{'s' if len(function_calls) > 1 else ''}..."
+        )
 
         for func_call in function_calls:
             tool_name = func_call.name
             args = func_call.args if isinstance(func_call.args, dict) else {}
-            await self.send_thought(f"Attempting to call '{tool_name}' with args '{args}'")
+            await self.send_thought(
+                f"Attempting to call '{tool_name}' with args '{args}'"
+            )
 
             tool_result_payload: dict[str, Any]
             try:
                 tool_result = await self.session.call_tool(tool_name, args)
-                await self.send_thought(f"  Session tool '{tool_name}' execution finished.")
+                await self.send_thought(
+                    f"  Session tool '{tool_name}' execution finished."
+                )
                 result_text = ""
                 if (
                     hasattr(tool_result, "content")
@@ -64,7 +73,9 @@ class MCPClient:
                         result_text
                         or f"Tool '{tool_name}' failed without specific error message."
                     )
-                    await self.send_thought(f"Tool '{tool_name}' reported an error: {error_message}")
+                    await self.send_thought(
+                        f"Tool '{tool_name}' reported an error: {error_message}"
+                    )
                     tool_result_payload = {"error": error_message}
                 else:
                     await self.send_thought(
@@ -74,8 +85,12 @@ class MCPClient:
 
             except Exception as e:
                 # Catch exceptions during the tool call itself
-                error_message = f"Tool execution framework failed: {type(e).__name__}: {e}"
-                await self.send_thought(f"Error executing tool '{tool_name}': {error_message}")
+                error_message = (
+                    f"Tool execution framework failed: {type(e).__name__}: {e}"
+                )
+                await self.send_thought(
+                    f"Error executing tool '{tool_name}': {error_message}"
+                )
                 tool_result_payload = {"error": error_message}
 
             # Create a FunctionResponse Part to send back to the model
@@ -84,10 +99,10 @@ class MCPClient:
                     name=tool_name, response=tool_result_payload
                 )
             )
-        await self.send_thought(f"Finished executing tool call{'s' if len(function_calls)>1 else ''}.")
+        await self.send_thought(
+            f"Finished executing tool call{'s' if len(function_calls)>1 else ''}."
+        )
         return tool_response_parts
-
-
 
     async def connect_to_server(self, server_script_path: str):
         """Connect to an MCP server
@@ -96,22 +111,24 @@ class MCPClient:
         """
         if self.session is not None:
             return
-        is_python = server_script_path.endswith('.py')
-        is_js = server_script_path.endswith('.js')
+        is_python = server_script_path.endswith(".py")
+        is_js = server_script_path.endswith(".js")
         if not (is_python or is_js):
             raise ValueError("Server script must be a .py or .js file")
-            
+
         command = "python" if is_python else "node"
         server_params = StdioServerParameters(
-            command=command,
-            args=[server_script_path],
-            env=None
+            command=command, args=[server_script_path], env=None
         )
-        stdio_transport = await self.exit_stack.enter_async_context(stdio_client(server_params))
+        stdio_transport = await self.exit_stack.enter_async_context(
+            stdio_client(server_params)
+        )
         self.stdio, self.write = stdio_transport
-        self.session = await self.exit_stack.enter_async_context(ClientSession(self.stdio, self.write))
+        self.session = await self.exit_stack.enter_async_context(
+            ClientSession(self.stdio, self.write)
+        )
         await self.session.initialize()
-        
+
         # List available tools
         response = await self.session.list_tools()
         tools = response.tools
@@ -136,7 +153,7 @@ class MCPClient:
             model=self.model_id,
             contents=self.history,  # Send updated history
             config=types.GenerateContentConfig(
-                temperature=1.0,
+                temperature=TEMPERATURE,
                 tools=[gemini_tool_config],
             ),
         )
@@ -148,14 +165,22 @@ class MCPClient:
         turn_count = 0
         # Check specifically for FunctionCall objects in the latest response part
         latest_content = response.candidates[0].content
-        has_function_calls = any(part.function_call for part in latest_content.parts)
+        try:
+            has_function_calls = any(
+                part.function_call for part in latest_content.parts
+            )
+        except:
+            has_function_calls = False
+
         while has_function_calls:
             turn_count += 1
             await self.send_thought(f"\n--- Tool Turn #{turn_count} ---")
 
             # --- 3.1 Execute Pending Function Calls ---
             function_calls_to_execute = [
-                part.function_call for part in latest_content.parts if part.function_call
+                part.function_call
+                for part in latest_content.parts
+                if part.function_call
             ]
             tool_response_parts = await self._execute_tool_calls(
                 function_calls_to_execute
@@ -166,15 +191,19 @@ class MCPClient:
             self.history.append(
                 types.Content(role="function", parts=tool_response_parts)
             )  # Use "function" role
-            await self.send_thought(f"Added {len(tool_response_parts)} tool response part(s) to history.")
+            await self.send_thought(
+                f"Added {len(tool_response_parts)} tool response part(s) to history."
+            )
 
             # --- 3.3 Make Subsequent Model Call with Tool Responses ---
-            await self.send_thought("Making subsequent API call to Gemini with tool responses...")
+            await self.send_thought(
+                "Making subsequent API call to Gemini with tool responses..."
+            )
             response = await self.genai_client.aio.models.generate_content(
                 model=self.model_id,
                 contents=self.history,  # Send updated history
                 config=types.GenerateContentConfig(
-                    temperature=1.0,
+                    temperature=TEMPERATURE,
                     tools=[gemini_tool_config],
                 ),
             )
@@ -182,11 +211,15 @@ class MCPClient:
 
             # --- 3.4 Append latest model response and check for more calls ---
             if not response.candidates:
-                await self.send_thought("Warning: Subsequent model response has no candidates.")
+                await self.send_thought(
+                    "Warning: Subsequent model response has no candidates."
+                )
                 break  # Exit loop if no candidates are returned
             latest_content = response.candidates[0].content
             self.history.append(latest_content)
-            has_function_calls = any(part.function_call for part in latest_content.parts)
+            has_function_calls = any(
+                part.function_call for part in latest_content.parts
+            )
             if not has_function_calls:
                 await self.send_thought(
                     "Model response contains text, no further tool calls requested this turn."
@@ -194,7 +227,9 @@ class MCPClient:
 
         # --- 4. Loop Termination Check ---
         if not has_function_calls:
-            await self.send_thought("Tool calling loop finished naturally (model provided text response).")
+            await self.send_thought(
+                "Tool calling loop finished naturally (model provided text response)."
+            )
 
         # --- 5. Return Final Response ---
         await self.send_thought("Agent loop finished. Returning final response.")
@@ -206,23 +241,24 @@ class MCPClient:
         """Run an interactive chat loop. For testing at the command line."""
         print("\nMCP Client Started!")
         print("Type your queries or 'quit' to exit.")
-        
+
         while True:
             try:
                 query = input("\nQuery: ").strip()
-                
-                if query.lower() == 'quit':
+
+                if query.lower() == "quit":
                     break
-                    
+
                 response = await self.process_query(query)
                 print("\n" + response)
-                    
+
             except Exception as e:
                 print(f"\nError: {str(e)}")
-    
+
     async def cleanup(self):
         """Clean up resources"""
         await self.exit_stack.aclose()
+
 
 async def main():
     if len(sys.argv) < 2:
@@ -234,6 +270,9 @@ async def main():
         await client.chat_loop()
     finally:
         await client.cleanup()
-if __name__ == '__main__':
+
+
+if __name__ == "__main__":
     import sys
+
     asyncio.run(main())

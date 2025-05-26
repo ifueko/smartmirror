@@ -12,6 +12,8 @@ body {
   background: black;
   color: white;
   font-family: "Sono", sans-serif;
+  overflow: hidden;
+  scrollbar-color: black black;
 }
 .content-bg {
   background: 010101;
@@ -95,13 +97,13 @@ body {
   overflow: hidden ;
   white-space: nowrap ;
   width: 100% ;
+  margin-top: -12px;
 }
 .marquee__item {
   animation-duration: 1000s ;
   animation-iteration-count: infinite ;
   animation-name: marquee-content ;
   animation-timing-function: linear ;
-  padding: 1pxl;	
   font-size: var(--font-size-title);
 }
 .marquee:hover .marquee__item {

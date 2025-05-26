@@ -7,6 +7,7 @@ from dateutil.parser import isoparse
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import pytz
+
 local_tz = pytz.timezone("America/New_York")
 
 PRIORITY_ORDER = {"High": 1, "Medium": 2, "Low": 3}
@@ -232,7 +233,9 @@ def update_task(notion, page_id, new_status):
     return page
 
 
-def create_standalone_task(notion, db_id, title, due_date_iso, priority, status, parent_id=None):
+def create_standalone_task(
+    notion, db_id, title, due_date_iso, priority, status, parent_id=None
+):
     try:
         props = {
             "Name": {"title": [{"text": {"content": title}}]},
@@ -253,7 +256,10 @@ def create_standalone_task(notion, db_id, title, due_date_iso, priority, status,
 
 
 def create_child_task(notion, db_id, parent_id, title, due_date_iso, priority, status):
-    return create_standalone_task(notion, db_id, title, due_date_iso, priority, status, parent_id)
+    return create_standalone_task(
+        notion, db_id, title, due_date_iso, priority, status, parent_id
+    )
+
 
 def create_parent_with_child_task(
     notion,
@@ -267,11 +273,20 @@ def create_parent_with_child_task(
     parent_status,
     child_status,
 ):
-    parent_task = create_standalone_task(notion, db_id, parent_title, parent_due_date_iso, parent_priority, parent_status)
-    parent_id = parent_task['id']
-    child_task = create_standalone_task(notion, db_id, child_title, child_due_date_iso, child_priority, child_status, parent_id)
+    parent_task = create_standalone_task(
+        notion, db_id, parent_title, parent_due_date_iso, parent_priority, parent_status
+    )
+    parent_id = parent_task["id"]
+    child_task = create_standalone_task(
+        notion,
+        db_id,
+        child_title,
+        child_due_date_iso,
+        child_priority,
+        child_status,
+        parent_id,
+    )
     return parent_task, child_task
-    
 
 
 def update_notion_task(
@@ -286,23 +301,15 @@ def update_notion_task(
     """Updates an existing Notion task page."""
     update_payload = {"properties": {}}
     if title is not None:
-        update_payload["properties"]["Name"] = {
-         "title": [{"text": {"content": title}}]
-        }
+        update_payload["properties"]["Name"] = {"title": [{"text": {"content": title}}]}
     if due_date_iso is not None:
-        update_payload["properties"]["Date"] = {
-            "date": {"start": due_date_iso}
-        }
+        update_payload["properties"]["Date"] = {"date": {"start": due_date_iso}}
     if priority is not None:
-        update_payload["properties"]["Priority"] = {
-            "select": {"name": priority}
-        } 
+        update_payload["properties"]["Priority"] = {"select": {"name": priority}}
     if status is not None:
-        update_payload["properties"]["Status"] = {
-            "status": {"name": status}
-        }
+        update_payload["properties"]["Status"] = {"status": {"name": status}}
     if trash:
-        update_payload["in_trash"] = True 
+        update_payload["in_trash"] = True
 
     if not update_payload["properties"]:
         print("Warning: No properties provided for update.")

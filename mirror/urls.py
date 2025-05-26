@@ -15,10 +15,30 @@ urlpatterns = [
     path("voice_chrome/", views.voice_chrome, name="voice_chrome"),
     path("voice/chat", views.voice_chat, name="voice_chat"),
     path("voice_chrome/chat", views.voice_chat, name="voice_chat"),
-    path('api/request_confirmation', views.handle_request_confirmation, name='api_request_confirmation'),
-    path('api/add_thought', views.handle_thought, name='api_add_thought'),
-    path('api/confirmation_status/<str:action_id>', views.handle_get_confirmation_status, name='api_get_confirmation_status'),
-    path('api/get_pending_ui_confirmations', views.get_pending_ui_confirmations, name='api_get_pending_ui_confirmations'),
-    path('api/get_pending_thoughts', views.get_pending_thoughts, name='api_get_pending_thoughts'),
-    path('api/submit_ui_confirmation/<str:action_id>', views.submit_ui_confirmation, name='api_submit_ui_confirmation'),
+    path(
+        "api/request_confirmation",
+        views.handle_request_confirmation,
+        name="api_request_confirmation",
+    ),
+    path("api/add_thought", views.handle_thought, name="api_add_thought"),
+    path(
+        "api/confirmation_status/<str:action_id>",
+        views.handle_get_confirmation_status,
+        name="api_get_confirmation_status",
+    ),
+    path(
+        "api/get_pending_ui_confirmations",
+        views.get_pending_ui_confirmations,
+        name="api_get_pending_ui_confirmations",
+    ),
+    path(
+        "api/get_pending_thoughts",
+        views.get_pending_thoughts,
+        name="api_get_pending_thoughts",
+    ),
+    path(
+        "api/submit_ui_confirmation/<str:action_id>",
+        views.submit_ui_confirmation,
+        name="api_submit_ui_confirmation",
+    ),
 ]

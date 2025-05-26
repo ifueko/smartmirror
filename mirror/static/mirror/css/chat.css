@@ -1,9 +1,17 @@
+body {
+  font-size: 2rem;
+}
+
 .top-bar {
   height: 2vh !important;
 }
 
 .chat-container {
   margin: 1rem; 
+}
+
+#chat-input {
+  font-size: 1.25rem;
 }
 
 #chat-window {
@@ -44,10 +52,10 @@
 
 button {
  padding: 0.25rem;
- align-self: flex-end;
 } 
 
 #btn-mic {
+  padding: 0.75rem 1.25rem 0.75rem 1rem;
   background-color: black !important;
   color: white !important;
   border: 2px solid white !important;
@@ -76,6 +84,7 @@ button {
   border: 5px solid rgba(255, 255, 255, 0.5);
   color: #ccc;
   font-style: italic;
+  font-size: 1.75rem;
   padding: 8px 16px;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
@@ -94,7 +103,6 @@ button {
 #thought-bubble.d-none {
   display: none;
 }
-
 
 #thought-bubble.fade-out {
   opacity: 0;

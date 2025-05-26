@@ -22,10 +22,12 @@ from mirrordb_server import (
     Status,
 )
 
+
 async def run_tests():
     print("--- Initial Data Fetch ---")
     tasks = await get_tasks()
-    print("Initial Tasks Cache:"); print(json.dumps(tasks, indent=2))
+    print("Initial Tasks Cache:")
+    print(json.dumps(tasks, indent=2))
     habits = await get_habits()
     print("Initial Habits Cache:", json.dumps(habits, indent=2))
     events = await get_events()
@@ -114,24 +116,25 @@ async def run_tests():
         end_iso="2025-05-16T11:00:00",
     )
     new_event_result = json.loads(new_event_result)
-    print("Create Event Result:", new_event_result['new_event'])
-    await get_events() # Refresh cache
-    first_event_google_id = new_event_result['new_event']['id']
+    print("Create Event Result:", new_event_result["new_event"])
+    await get_events()  # Refresh cache
+    first_event_google_id = new_event_result["new_event"]["id"]
     print(first_event_google_id)
-    for key, event in cache['events'].items():
-        if event['id'] == first_event_google_id:
+    for key, event in cache["events"].items():
+        if event["id"] == first_event_google_id:
             print("UPDATING!!!")
             update_event_result = await update_event(
                 event_id=key, name="Updated Test Event Name"
             )
             print(update_event_result)
             time.sleep(30)
-    for key, event in cache['events'].items():
-        if event['id'] == first_event_google_id:
+    for key, event in cache["events"].items():
+        if event["id"] == first_event_google_id:
             print("DELETING!!!")
             delete_event_result = await delete_event(cache_id=key)
             print("Delete Event Result:", delete_event_result)
     print("-" * 30)
+
 
 if __name__ == "__main__":
     asyncio.run(run_tests())
