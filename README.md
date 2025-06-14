@@ -5,6 +5,7 @@ python -m pip install -r requirements.txt
 ```
 ## Download pinterest images to vision board
 for this command, board must be public, see [gallery-dl docs](https://github.com/mikf/gallery-dl/) for login instructions on private boards
+alternatively, create a folder of images called "vision" and place it in mirror/static/mirror/
 ```
 python -m pip install gallery-dl
 gallery-dl -d mirror/static/mirror/vision -o directory="" [PINTEREST_BOARD_URL]
