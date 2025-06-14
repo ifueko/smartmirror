@@ -1,6 +1,7 @@
 ## Install Requirements
 ```
 conda create -n smartmirror python=3.11
+conda activate smartmirror
 python -m pip install -r requirements.txt
 ```
 ## Download pinterest images to vision board
