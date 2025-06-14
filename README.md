@@ -16,6 +16,7 @@ vi .env # or whatever editor you use
 ```
 
 ## Run Server
+Note: First run will take a while because whisper needs to download weights the first time.
 ```
 python manage.py collectstatic --noinput
 uvicorn smartmirror.asgi:application --host 127.0.0.1 --port 8000
