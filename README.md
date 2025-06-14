@@ -1,15 +1,26 @@
-I make no promises with this code. Use at your own risk :)
-
-## Jailbreak instructions for lululemon studio mirror
-https://github.com/olm3ca/mirror
-
-## Installation + Usage
+## Install Requirements
 ```
 conda create -n smartmirror python=3.11
 python -m pip install -r requirements.txt
-conda install -c conda-forge 'ffmpeg<7' # not sure if this is actually necessary
-python manage.py collectstatic
-uvicorn smartmirror.asgi:application --host 127.0.0.1 --port 8000
+```
+## Download pinterest images to vision board
+for this command, board must be public, see [gallery-dl docs](https://github.com/mikf/gallery-dl/) for login instructions on private boards
+```
+python -m pip install gallery-dl
+gallery-dl -d mirror/static/mirror/vision -o directory="" [PINTEREST_BOARD_URL]
+```
+## Create and update env
+```
+cp example.env .env
+vi .env # or whatever editor you use
 ```
 
-I likely forgot things, but will update this readme to be more helpful eventually.
+## Run Server
+```
+python manage.py collectstatic --noinput
+uvicorn smartmirror.asgi:application --host 127.0.0.1 --port 8000
+```
+Now the mirror UI will show up at localhost:8000 or 127.0.0.1:8000
+
+## Jailbreak instructions for lululemon studio mirror
+https://github.com/olm3ca/mirror
