@@ -13,3 +13,6 @@ pytz
 uvicorn
 watchfiles
 openai-whisper 
+pathvalidate
+sentence-transformers
+# num2words

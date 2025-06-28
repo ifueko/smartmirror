@@ -1,0 +1,237 @@
+.closet {
+  height: 93vh;
+  margin: 10px;
+  overflow-y: scroll!important;
+}
+#closet {
+  position: relative;
+  overflow: hidden;
+}
+
+.closet-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding-bottom: 1rem;
+}
+
+.closet-img-container {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 12px;
+  width: 100%;
+  margin-bottom: 5px;
+}
+
+.closet-img {
+  width: 100%;
+  height: 40vh;
+  object-fit: cover;
+  opacity: 0.7;
+  border-radius: 12px;
+  transition: opacity 0.3s ease;
+}
+
+.closet-img:hover {
+  opacity: 1;
+}
+
+#closetImage {
+  width: 100%;
+  height: auto;
+}
+
+.closet-wrapper {
+  display: flex;
+  flex-direction: column;
+  animation: scroll-vert 6000s linear infinite;
+}
+.closet-wrapper img {
+  padding-bottom: 12px;
+  width: 260px;
+  height: 260px;
+  background-repeat: no-repeat;
+}
+
+#modalListing {
+  border: 1px solid #ddd;
+  padding: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+#modalListing .section {
+  margin-bottom: 0.75rem;
+}
+
+#modalListing .label {
+  font-weight: 600;
+  color: #aaa;
+  display: inline-block;
+  font-size: 0.95rem;
+}
+
+#modalListing .value {
+  font-size: 0.95rem;
+  color: #fff;
+}
+
+.listing-container {
+  margin-top: 0.5rem;
+}
+
+
+#modalListing .inline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+
+#modalListing .color-swatch {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  box-shadow: inset 0 0 1px rgba(0, 0, 0, 0.2);
+  margin-right: 5px;
+}
+
+#modalListing .inline-tags span {
+  display: inline-block;
+  color: white;
+  border-radius: 6px;
+  padding: 2px 6px;
+  margin: 2px 4px 2px 0;
+  white-space: nowrap;
+}
+
+.outfit-buttons-container {
+  z-index: 1000 !important;
+  position: absolute;
+  top: 80px;
+  right: 20px;
+}
+
+.outfit-buttons {
+  border-radius: 25px;
+  border: 3px solid white;
+  background-color: #000000cc;
+  color: white;
+  padding: 12px; 
+}
+
+#outfitGrid {
+  height: 1000px;
+  border: 10px solid black;
+  background-color: black;
+  border-radius: 25px;
+  margin: 0;
+  padding: 0;
+}
+
+.outfit-grid div {
+  margin: 0;
+  padding: 0;
+}
+
+.outfit-grid {
+  height: 31vh;
+  margin-bottom: 10px;
+}
+
+.outfit-img {
+  object-fit: cover;
+  border: 1px solid black;
+}
+
+.daily-outfit-icon {
+  object-fit: cover;
+  border: 1px solid gold;
+  border-radius: 5px;
+  width: 150px;
+  height: 150px;
+  padding: 2px;
+}
+
+.outfit-icon {
+  object-fit: cover;
+  border: 1px solid gold;
+  border-radius: 5px;
+  width: 50px;
+  height: 50px;
+  padding: 2px;
+}
+
+.icon-div {
+  border-radius: 10px;
+  background-color: #00000020;
+}
+
+.daily-grid-overflow {
+  margin-top: -200px;
+  height: 208px;
+  padding: 20px;
+  overflow-x: scroll;
+}
+
+.grid-overflow {
+  margin-top: -75px;
+  height: 80px;
+  padding: 5px;
+  overflow-x: scroll;
+}
+
+#dailyOutfitsModalBody {
+ height: 1200px;
+ background-image: url("/static/closet/images/cheetah_background.png");
+ background-size: cover;
+}
+
+#weeklyOutfitsModalBody {
+ height: 83vh;
+ background-image: url("/static/closet/images/cheetah_background.png");
+ background-size: cover;
+}
+
+.button-div {
+  background-color: black;
+  color: white;
+  border: 3px solid white;
+  padding: 10px;
+  border-radius: 25px;
+}
+
+.add-button {
+  font-size: 20rem;
+  display: flex;
+  align-items: center;
+}
+.add-button-title {
+  font-size: 5rem;
+  display: flex;
+  align-items: center;
+}
+
+.weekly-outfits-modal-row {
+  height: 32vh;
+  width: 97vw;
+}
+
+#weeklyGenerationUI {
+  background-color: #000000aa;
+  border-radius: 25px;
+  height: 31vh;
+}
+
+#dailyGenerationUI {
+  background-color: #000000aa;
+  border-radius: 25px;
+  height: 170px;
+}

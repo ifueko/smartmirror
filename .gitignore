@@ -43,3 +43,4 @@ tests/.coverage
 
 # Ignore vision board images
 mirror/static/mirror/vision/*
+closet/static/closet/inventory/*

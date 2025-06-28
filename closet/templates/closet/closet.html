@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FuekOS Smart Closet</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous">
+    {% load static %}
+    {% csrf_token %}
+    <link href="{% static 'mirror/css/dashboard.css' %}" rel="stylesheet">
+    <link href="{% static 'closet/css/closet.css' %}" rel="stylesheet">
+</head>
+<body class="d-flex flex-column min-vh-100 justify-bewteen" data-bs-theme="dark">
+<main class="flex-grow-1">
+<div class="outfit-buttons-container">
+  <button class="outfit-buttons" onclick="openOutfitModal('dailyOutfitsModal')">👚 Daily  Outfits</button>
+  <button class="outfit-buttons" onclick="openOutfitModal('weeklyOutfitsModal')">📅 Weekly Outfits</button>
+</div>
+<div class="modal fade" id="dailyOutfitsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content bg-black text-white">
+      <div class="modal-header border-0">
+        <h5 id="dailyOutfitsModalTitle" class="modal-title"></h5>
+        <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div id="dailyOutfitsModalBody" class="modal-body text-center">
+        <div class="container outfit-grid" id="outfitGrid"></div>
+        <div class="d-flex flex-row-reverse daily-grid-overflow" id="outfitGridOverflow"></div>
+        <div class="container" id="dailyGenerationUI"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal fade" id="weeklyOutfitsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-fullscreen modal-dialog-centered">
+    <div class="modal-content bg-black text-white">
+      <div class="modal-header border-0">
+        <h5 id="weeklyOutfitsModalTitle" class="modal-title"></h5>
+        <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div id="weeklyOutfitsModalBody" class="modal-body text-center">
+        <div class="container p-0 m-1">
+          <div class="row weekly-outfits-modal-row">
+            <div class="col-4 m-0 p-0">
+              <div class="container outfit-grid" id="outfitGrid1"></div>
+              <div class="d-flex flex-row-reverse grid-overflow" id="outfitGrid1Overflow"></div>
+            </div>
+            <div class="col-4 m-0 p-0">
+              <div class="container outfit-grid" id="outfitGrid2"></div>
+              <div class="d-flex flex-row-reverse grid-overflow" id="outfitGrid2Overflow"></div>
+            </div>
+            <div class="col-4 m-0 p-0">
+              <div class="container outfit-grid" id="outfitGrid3"></div>
+              <div class="d-flex flex-row-reverse grid-overflow" id="outfitGrid3Overflow"></div>
+            </div>
+          </div>
+          <div class="row weekly-outfits-modal-row">
+            <div class="col-4 m-0 p-0">
+              <div class="container outfit-grid" id="outfitGrid4"></div>
+              <div class="d-flex flex-row-reverse grid-overflow" id="outfitGrid4Overflow"></div>
+            </div>
+            <div class="col-4 m-0 p-0">
+              <div class="container outfit-grid" id="outfitGrid5"></div>
+              <div class="d-flex flex-row-reverse grid-overflow" id="outfitGrid5Overflow"></div>
+            </div>
+            <div class="col-4 m-0 p-0">
+              <div class="container outfit-grid" id="outfitGrid6"></div>
+              <div class="d-flex flex-row-reverse grid-overflow" id="outfitGrid6Overflow"></div>
+            </div>
+          </div>
+          <div class="row weekly-outfits-modal-row">
+            <div class="col-4 m-0 p-0">
+              <div class="container outfit-grid" id="outfitGrid7"></div>
+              <div class="d-flex flex-row-reverse grid-overflow" id="outfitGrid7Overflow"></div>
+            </div>
+            <div class="col-8 m-0 p-0">
+              <div class="container" id="weeklyGenerationUI"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="mt-2 container-fluid">
+  <div class="row">
+    <div class="col-6">
+      <div id="clock" class="col-12 text-start clock">HH:MM:ss</div>
+    </div>
+    <div class="col-6">
+      <div class="info-bar">
+      <table>
+        <tbody>
+          <tr>
+            <td id="weather" class="fadable weather text-start">TBA: Weather Forecast</td>
+            <td>
+              <table><tbody><tr>
+                <td id="dock" class="text-end">
+                  <a href="/"><button class="fadable btn btn-sm me-2" title="Home">🏠</button></a>
+                </td>
+              </tr></tbody></table>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="flex-grow-1 d-flex flex-column">
+  <div id="closet" class="fadable closet content-bg bg-opacity-25 rounded d-flex overflow-hidden gap-2">
+  </div>
+</div>
+<div class="modal fade" id="closetImageModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content bg-black text-white">
+      <div class="modal-header border-0">
+        <h5 id="closetTitle" class="modal-title"></h5>
+        <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div id="closetImageModalBody" class="modal-body text-center">
+        <img id="closetImage" src="" class="img-fluid rounded shadow">
+	      <div class="listing-container text-center">
+	        <div id="modalListing">
+	          <div class="section inline">
+	            <span class="label">Colors</span>
+	            <div id="colorSection"></div>
+	          </div>
+	          <div class="section inline">
+	            <span class="label">Last Worn</span>
+	            <span class="value" id="lastWorn">—</span>
+	          </div>
+	          <div class="section inline">
+	            <span class="label">Condition</span>
+	            <span class="value" id="condition">—</span>
+	          </div>
+	          <div class="section inline">
+	            <span class="label">Season</span>
+	            <div class="inline-tags" id="season"></div>
+	          </div>
+	          <div class="section inline">
+	            <span class="label">Category</span>
+	            <span class="value" id="category">—</span>
+	          </div>
+	          <div class="section inline">
+	            <span class="label">Style</span>
+	            <div class="inline-tags" id="styleTags"></div>
+	          </div>
+	          <div class="section inline">
+	            <span class="label">Fit</span>
+	            <span class="value" id="fit">—</span>
+	          </div>
+	        </div>
+	      </div>
+      </div>
+    </div>
+  </div>
+</div>
+</main>
+<div class="marquee pb-1 text-center align-middle fs-5 fw-semibold">
+    <div class="pl-2 marquee__item">YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS ·&nbsp;</div>
+    <div class="marquee__item">YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS · YOU ARE WORTHY OF ALL YOUR DREAMS AND GOALS ·&nbsp;</div>
+
+</div>
+<script src="{% static 'mirror/js/utils.js' %}"></script>
+<script src="{% static 'mirror/js/clock.js' %}"></script>
+<script src="{% static 'mirror/js/weather.js' %}"></script>
+<script src="{% static 'closet/js/closet.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
+</body>
+</html>

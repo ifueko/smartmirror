@@ -15,12 +15,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 import os
+from closet.database_functions import fetch_closet_inventory
 
 NOTION_API_KEY = os.getenv("NOTION_API_KEY")
 NOTION_TASK_DB_ID = os.getenv("NOTION_TASK_DB_ID")
 NOTION_HABIT_DB_ID = os.getenv("NOTION_HABIT_DB_ID")
 GOOGLE_CALENDAR_IDS = os.getenv("GOOGLE_CALENDAR_IDS", "").split(",")
 GOOGLE_CALENDAR_CRED_PATH = os.getenv("GOOGLE_CALENDAR_CRED_PATH")
+CLOSET_INVENTORY = fetch_closet_inventory(os.getenv("CLOSET_INVENTORY_DB_ID"))
+OUTFITS_DB_ID=os.getenv("OUTFITS_DB_ID", "")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -47,6 +50,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "channels",
+    "closet",
     "mirror",
     "ml_models",
 ]

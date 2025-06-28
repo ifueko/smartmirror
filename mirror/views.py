@@ -305,60 +305,6 @@ async def voice_chat(request):
             {"error": f"An internal error occurred: {str(e)}"}, status=500
         )
 
-
-async def voice_chat_orig(request):
-    try:
-        data = json.loads(request.body)
-        msg = data.get("message", "").strip()
-
-        if not msg:
-            logger.warning("Voice chat request with empty message.")
-            return JsonResponse({"error": "Message cannot be empty."}, status=400)
-
-        # Get the initialized and connected MCP service
-        mcp_service = await get_mcp_service()
-
-        logger.info(f"Processing voice chat query: '{msg}'")
-        # The mcp_service.client.session can be checked here if needed for debugging
-        # logger.debug(f"MCP Session state: {mcp_service.client.session}")
-
-        response_text = await mcp_service.process_query(msg)
-        response_text = response_text.split("\n")
-        return JsonResponse({"response": response_text})
-
-    except json.JSONDecodeError:
-        logger.error("Invalid JSON received in voice_chat request.", exc_info=True)
-        return JsonResponse({"error": "Invalid JSON format."}, status=400)
-    except Exception as e:
-        # Log the full exception details for debugging
-        logger.error(
-            f"Error processing voice_chat request: {type(e).__name__}: {e}",
-            exc_info=True,
-        )
-        # Provide a generic error message to the client
-        return JsonResponse(
-            {"error": f"An internal error occurred: {str(e)}"}, status=500
-        )
-
-
-@csrf_exempt
-@require_http_methods(["POST"])
-async def voice_chat2(request):
-    # try:
-    data = json.loads(request.body)
-    msg = data.get("message", "").strip()
-    if not msg:
-        return JsonResponse({"error": str(e)}, status=500)
-    await _ensure_connected()
-    print(mcp_client.session)
-    response = await mcp_client.process_query(msg)
-    return JsonResponse({"response": response})
-
-
-# except Exception as e:
-#    return JsonResponse({"error": str(e)}, status=500)
-
-
 def vision_board_feed(request):
     global seed_offset_vision_board
     folder = os.path.join(settings.BASE_DIR, "mirror/static/mirror/vision")

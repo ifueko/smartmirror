@@ -22,6 +22,7 @@ from django.urls import path, include
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("", include("closet.urls")),
     path("", include("mirror.urls")),
     path("", include("ml_models.urls")),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
