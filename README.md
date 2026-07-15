@@ -1,3 +1,17 @@
+## Overview
+
+This repository contains the backend and logic for a custom LLM-driven smart mirror application. Designed to deploy on constrained physical hardware (specifically a jailbroken Lululemon Studio Mirror) the system bridges local UI rendering with language model interactions.
+
+## Architecture & Core Features
+
+- MCP Integration: A custom Model Context Protocol (MCP) server handles stateful interaction between the mirror's interface and the underlying language model to communicate with a Notion backend.
+
+- Local Audio Processing: Integrates Whisper for localized, low-latency speech-to-text processing.
+
+- Hardware-in-the-Loop: Purpose-built to run on the specific display and compute constraints of a modified commercial Lululemon mirror.
+
+(Contributions and pull requests are welcome!)
+
 ## Install Requirements
 ```
 conda create -n smartmirror python=3.11
